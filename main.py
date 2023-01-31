@@ -9,7 +9,7 @@ from modules import (
 
 
 root = tk.Tk()
-root.minsize(500, 500)
+root.minsize(1280, 720)
 
 
 
