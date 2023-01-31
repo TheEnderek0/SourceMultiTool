@@ -1,18 +1,20 @@
 import tkinter as tk
 from tkinter import ttk
+from PIL import ImageTk, Image 
+from . import common_lib as cm
+import webbrowser
 
-N = tk.N
-S = tk.S
-E = tk.E
-W = tk.W
 
 ghImageFile = False
 ghpath = './img/GitHub.png'
+ghOpImg = Image.open(ghpath)
+
+default_font = 'Arial'
 
 def Init(container):
     print("Initialising info tab")
     global ghImageFile
-    ghImageFile = tk.PhotoImage(file=ghpath)
+    ghImageFile = ResizePicture(ghOpImg, (100, 100))
 
     frame = ttk.Frame(container)
     frame.grid(column=0, row=0, sticky="nsew")
@@ -28,38 +30,51 @@ def Init(container):
 
 
 def InfoFrame(container):
-    inFrame = ttk.Frame(container, width=100)
+    inFrame = ttk.Frame(container)
     inFrame.grid(column=0, row=0, sticky="nsew")
 
     inLabel = ttk.Label(inFrame, 
-        text = "Test!wdas dsaawdsadaswdasdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        wraplength = inFrame.winfo_width(),
+        text = "Amogus amogus amogus amogus amogus amogus amogus Amogus amogus amogus amogus amogus amogus amogus Amogus amogus amogus amogus amogus amogus amogus Amogus amogus amogus amogus amogus amogus amogus",
+        wraplength = 300,
         justify = 'center',
-        style="BW.TLabel"
+        style="BW.TLabel",
+        font = (default_font, 15)
         )
     inLabel.pack(fill = 'both', expand = True)
-    inFrame.bind('<Configure>', lambda e: inLabel.config(wraplength=inFrame.winfo_width()))
+    inFrame.bind('<Configure>', lambda e: ResizeWrapLenght(inLabel, inFrame.winfo_width()))
 
 def GitHubIcon(container):
-    global ghImageFile
+
     ghFrame = ttk.Frame(container)
-    ghFrame.grid(column=2, row=0, sticky="nsew")
+    ghFrame.grid(column=2, row=0, sticky='nsew')
+    ghFrame.columnconfigure(index=0, weight=1)
+    ghFrame.rowconfigure(index = 0, weight=1)
 
-    ghImage = ttk.Label(ghFrame,
-        image = ghImageFile,
-        #text = "Test amogus goose lol lmao s",
-        justify = 'center'
-    )
+    global ghImageFile
+    ghButton = ttk.Button(ghFrame,
+        image = ghImageFile
+        )
+    ghButton.grid(column=0, row=0, sticky="nsew")
 
-    ghImage.pack(fill = 'both', expand = True)
-    ghFrame.bind('<Configure>', ResizeImage(ghFrame, ghImage, ghpath))
+    #print("Height = " + str(ghButton.winfo_height()))
+    #print("Width = " + str(ghButton.winfo_width()))
+    ghFrame.grid_propagate(False)
+    ghFrame.bind('<Configure>', lambda e: ResizeGhImage(ghButton))
+    ghButton.bind('<Button>', lambda e: webbrowser.open(url='https://github.com/TheEnderek0/SourceMultiTool', new=2))
 
-def ResizeImage(parent, element, imgPath):
-    print("Resizing image!")
-    print("Height = " + str(parent.winfo_height()))
-    print("Width = " + str(parent.winfo_width()))
 
-    element.configure(image = tk.PhotoImage(imgPath, height = parent.winfo_height(), width=parent.winfo_width()))
+def ResizeGhImage(cont):
+    global ghImageFile
+    #print("Resizing image!")
+    #print("Height = " + str(cont.winfo_height()))
+    #print("Width = " + str(cont.winfo_width()))
+    width, height = cm.MaximumScale(ghOpImg, (cont.winfo_width(), cont.winfo_height()))
+    #print("Resized width = " + str(width))
+    #print("Resized height = " + str(height))
+    ghImageFile = ResizePicture(ghOpImg, (width - 20, height - 20))
+    cont.config(image = ghImageFile)
+
+    
 
 def CreateTestButton(row1, column1, container):
     button = tk.Button(container)
@@ -73,3 +88,17 @@ def ConfigureCR(frame):
     frame.rowconfigure(index=0, weight=1)
     frame.rowconfigure(index=1, weight=2)
     frame.rowconfigure(index=2, weight=3)
+
+def ResizePicture(pic, size: tuple):
+    return ImageTk.PhotoImage(pic.resize(size, Image.ANTIALIAS))
+
+def ResizeWrapLenght(ent, lenght: int):
+    print("Wrap lenght = " + str(lenght))
+    print(ent)
+    if 200 > lenght > 120:
+        ent.config(wraplength = lenght)
+    elif lenght > 200:
+        ent.config(wraplenght = 200)
+    else:
+        ent.config(wraplenght = 120)
+

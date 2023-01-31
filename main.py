@@ -11,6 +11,8 @@ from modules import (
 root = tk.Tk()
 root.minsize(500, 500)
 
+
+
 def main():
     DefineStyles()
     root.title("Source MultiTool")
