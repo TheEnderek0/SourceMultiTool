@@ -49,7 +49,9 @@ def InfoFrame(container):
         anchor='c',
         justify = 'center',
         style="BW.TLabel",
-        font = (default_font, 15)
+        font = (default_font, 15),
+        border=5,
+        relief='groove'
         )
     inLabel.pack(fill = 'both', expand = True)
     inFrame.bind('<Configure>', lambda e: cm.ResizeWrapLength(inLabel, inFrame.winfo_width(), 400, 120, 0.7))
