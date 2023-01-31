@@ -41,7 +41,7 @@ def InfoFrame(container):
         font = (default_font, 15)
         )
     inLabel.pack(fill = 'both', expand = True)
-    inFrame.bind('<Configure>', lambda e: ResizeWrapLenght(inLabel, inFrame.winfo_width()))
+    inFrame.bind('<Configure>', lambda e: ResizeWrapLength(inLabel, inFrame.winfo_width()))
 
 def GitHubIcon(container):
 
@@ -92,13 +92,18 @@ def ConfigureCR(frame):
 def ResizePicture(pic, size: tuple):
     return ImageTk.PhotoImage(pic.resize(size, Image.ANTIALIAS))
 
-def ResizeWrapLenght(ent, lenght: int):
-    print("Wrap lenght = " + str(lenght))
-    print(ent)
-    if 200 > lenght > 120:
-        ent.config(wraplength = lenght)
-    elif lenght > 200:
-        ent.config(wraplenght = 200)
+def ResizeWrapLength(ent, length: int):
+    print("Wrap length = " + str(length))
+
+    length *= 0.7 #Snap multiplier
+
+    max = 400
+    min = 120
+
+    if max > length > min:
+        ent.config(wraplength = length)
+    elif length > max:
+        ent.config(wraplength = max)
     else:
-        ent.config(wraplenght = 120)
+        ent.config(wraplength = min)
 
