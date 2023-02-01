@@ -10,6 +10,9 @@ def MaximumScale(img, size: tuple):
     width = 0
     height = 0
 
+    if size[0] < 100 or size[1] < 100:
+        return 100, 100
+
     if size_aspect < aspect:
         width = size[0]
         height = int(width / aspect)
@@ -19,10 +22,12 @@ def MaximumScale(img, size: tuple):
 
     return width, height
 
-def ResizeWrapLength(ent, length: int, max: int, min: int, multiplier: int):
+def ResizeWrapLength(ent, length: int, max: int = 300, min: int = 1, multiplier: float = 0.9, endmultiplier = 1):
+    print("Resizing Wrap lenght for " + str(ent))
+
     length *= multiplier #Snap multiplier
     if max > length > min:
-        ent.config(wraplength = length)
+        ent.config(wraplength = length * endmultiplier)
     elif length > max:
         ent.config(wraplength = max)
     else:

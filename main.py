@@ -3,6 +3,8 @@ from tkinter import ttk
 
 from modules import (
     info, # Info tab
+    config_tab, #Configuraton tab, important that it is here
+    
     cc # Caption Compiler
     )
 
@@ -26,6 +28,7 @@ def main():
     selector.rowconfigure(index=0, weight=1)
 
     info.Init(selector)
+    config_tab.Init(selector)
     cc.Init(selector)
 
 def DefineStyles():
