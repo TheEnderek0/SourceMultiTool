@@ -67,7 +67,7 @@ def GitHubIcon(container):
     ghButton.grid(column=0, row=0, sticky="nsew")
 
     ghFrame.grid_propagate(False)
-    ghFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(ghButton, ghOPIMG, "ghImageFile", width= -20, height = -20))
+    ghFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(ghButton, ghOPIMG, "ghImageFile"))
     ghButton.bind('<Button>', lambda e: webbrowser.open(url=GITHUB_URL, new=2))
 
 def WikiButton(container):
@@ -81,7 +81,7 @@ def WikiButton(container):
     wikiButton = ttk.Button(wikiFrame)
     wikiButton.grid(column=0, row=0, sticky='nsew')
 
-    wikiFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(wikiButton, wikOPIMG, "wikiImageFile", width= -10, height = -10))
+    wikiFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(wikiButton, wikOPIMG, "wikiImageFile"))
     wikiButton.bind('<Button>', lambda e: webbrowser.open(url=WIKI_URL, new=2))
 
 
@@ -97,3 +97,9 @@ def ConfigureCR(frame):
     frame.columnconfigure(index=2, weight=3)
     frame.rowconfigure(index=0, weight=1)
     frame.rowconfigure(index=1, weight=1)
+
+def SaveDefault():
+    pass
+
+def Load():
+    pass

@@ -1,10 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
-
+import os
 from modules import (
+    common_lib as cm,
     info, # Info tab
     config_tab, #Configuraton tab, important that it is here
-    
+
     cc # Caption Compiler
     )
 
@@ -31,10 +32,25 @@ def main():
     config_tab.Init(selector)
     cc.Init(selector)
 
+    loadResult = cm.LoadJson(f'{os.getcwd()}/settings.json')
+    if not loadResult:
+        info.SaveDefault()
+        config_tab.SaveDefault()
+
+    cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
+    info.Load()
+    config_tab.Load()
+
+    
 def DefineStyles():
+
+    cm.SetGlobal("font", ("Arial", 12))
+
     style = ttk.Style()
 
     style.configure("BW.TLabel", foreground="black", background="#e6e6e6")
+    style.configure("CFG.TEntry", foreground="black", background="#e6e6e6")
+    style.configure("CFG.TButton", foreground="black", background="#e6e6e6")
 
 
 
