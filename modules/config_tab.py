@@ -197,9 +197,13 @@ def Load(opening = False): # Loads this module's dependent settings
         AppendConfigName(item)
     
     if opening:
-        current = cm.GetData("app", "config_tab", "active_cfg")
-        cm.GetGlobal("ConfigDropdown").set(current)
-        LoadFor(current)
+        current = cm.GetData("app", "config_tab", "active_cfg") # Load the config from settings.json
+        if current not in configs: # Something must have saved wrongly, if this is true
+            cm.GetGlobal("ConfigDropdown").set(configs[0])
+            LoadFor(configs[0])
+        else:
+            cm.GetGlobal("ConfigDropdown").set(current)
+            LoadFor(current)
 
 def LoadFor(cfg): # Load values for every object
     print("Loading for " + str(cfg))
