@@ -134,6 +134,28 @@ def AppendButtons(container):
 
     return Select, Goto
 
+def Popup(text):
+    '''Make a popup with text'''
+    window = tk.Toplevel(globals()['root'], 
+
+    )
+    label = ttk.Label(window, 
+        text=text,
+        font=globals()['font'],
+        borderwidth=5,
+        relief='flat'
+        )
+
+    label.pack(fill='x', padx=50, pady=25)
+
+    button_close = ttk.Button(window, 
+        text="Close", 
+        command=window.destroy)
+
+    button_close.pack(fill='x')
+    window.attributes("-topmost", 1)
+    window.grab_set()
+
 
 # Save managment
 
@@ -236,29 +258,29 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
     
     else: #We want a specific element
         try:
-            print("Tried!")
+            #print("Tried!")
             to_return = jsonData[type][name][config]
-            print("Going further")
+            #print("Going further")
         except KeyError: # We don't have this config
             try:
-                print("Trying type name")
-                print(jsonData)
+                #print("Trying type name")
+                #print(jsonData)
                 jsonData[type][name] #Check if we have this name in general
-                print("Going further")
+                #print("Going further")
                 jsonData[type][name][config] = default_settings[type][def_name][config] # We do, so save for this name, attribute of the default name
                 json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
                 ReloadJson()
 
             except KeyError:
                 try:
-                    print("Trying structure")
+                    #print("Trying structure")
                     jsonData[type] # Check if we have the block
-                    print("Passed")
+                    #print("Passed")
                     if type == 'cfg' and not "New Configuration" in name:
-                        print("Raising error")
+                        #print("Raising error")
                         raise ValueError(f"Invalid name of {name} was passed!") # We only look at the app!
 
-                    jsonData[type][name] = default_settings[type][name]
+                    jsonData[type][name] = default_settings[type][def_name]
                     json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
                     ReloadJson()
 
@@ -266,9 +288,9 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
                     jsonData[type] = default_settings[type]
                     json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
                     ReloadJson()
-        print(jsonData)
-        to_return = jsonData[type][name][config]
 
+        to_return = jsonData[type][name][config]
+    #print("To return: " + str(to_return))
     return to_return
 
 def ReloadJson():
@@ -293,11 +315,13 @@ def SaveRaw(type, save):
     global jsonData
     jsonData[type] = save
     json.dump(jsonData, open(savePath, "w"), indent=4)
+    ReloadJson()
 
 def SaveForCFG(name, tkString: tk.StringVar):
     '''Save state for an cfg attribute'''
     if globals()["disable_save"] == True:
         return
+    name = name.replace("Entry", '')
     print(f"Saving {name} for " + str(globals()["ConfigDropdown"].get()))
     SaveData("cfg", globals()["ConfigDropdown"].get(), name, tkString.get())
 

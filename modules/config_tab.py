@@ -58,6 +58,7 @@ def SaveSelector(cont):
     deleteButton.grid(column=2, row=0, sticky='ew', padx=10, pady=20)
 
     addButton.bind("<Button>", lambda e: AddConfig())
+    deleteButton.bind("<Button>", lambda e: DeleteConfig())
 
 
 
@@ -171,7 +172,7 @@ def PathSelect(container):
     cm.SetGlobal("Name", (nameBox, nameString))                    # Set the values
     cm.SetGlobal("GameInfo", (gameinfoBox, gameinfoString))        #
     cm.SetGlobal("ConfigWindow", (canvasFrame, 2))  # <- Used for module specific fields
-    cm.SetGlobal("EntryNameList", ["GameInfo"])
+    cm.SetGlobal("EntryList", ["GameInfo"])
 
 
 def AppendConfigName(cfg): #Add this config name to the list of configs and update the ConfigDropdown widget, used for loading
@@ -188,32 +189,33 @@ def SaveDefault(): # Load default state and save, used when settings.json is emp
     #cm.SaveData("app", "config_tab", "active_cfg", "NewSave")
     pass
 
-def Load(firstLoad = False): # Loads this module's dependent settings
+def Load(opening = False): # Loads this module's dependent settings
     #data = cm.RetrieveJson() 
     #configs = list(data["cfg"].keys()) #Get the list of names
-    configs = list(cm.GetData('cfg'))
-    for item in configs: # For every name, append it to the ConfigDropdown
+    keys = list(cm.GetData('cfg').keys())
+    for item in keys: # For every name, append it to the ConfigDropdown
         AppendConfigName(item)
-    if firstLoad:
-        cm.GetGlobal("ConfigDropdown").set(configs[0]) #TEMP WORKAROUND, UNTIL I CODE APP PROPERTIES
-        LoadFor(configs[0])                            # ^^^
+    
+    if opening:
+        current = cm.GetData("app", "config_tab", "active_cfg")
+        cm.GetGlobal("ConfigDropdown").set(current)
+        LoadFor(current)
 
 def LoadFor(cfg): # Load values for every object
     print("Loading for " + str(cfg))
     #data = cm.RetrieveJson()
     #config_dict = data["cfg"] # Get the CFG dictionary
     #settings = config_dict[cfg] # Now get the dictionary that is bound to this name
-    settings = cm.GetData('cfg', cfg)
-    
+    cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
     cm.SetGlobal("disable_save", True)  # Disable saving, so it doesn't clear the field and save it as clear, ruining the save
 
-    for setting in cm.GetGlobal("EntryNameList"): # For every name in entries, we cannot do keys because user can modify the settings!
-        try:
-            entry = cm.GetGlobal(setting)[0] # Retrieve the entry key, it's a tuple of the entry box and stringvar, we only want the box [0]
-            entry.delete(0, tk.END) # Clear the field
-            entry.insert(0, cm.GetData('cfg', cfg, setting)) # Insert the saved setting/path
-        except:
-            print(f"No key for {setting}")
+    for setting in cm.GetGlobal("EntryList"): # For every name in entries, we cannot do keys because user can modify the settings!
+        #try:
+        entry = cm.GetGlobal(setting)[0] # Retrieve the entry key, it's a tuple of the entry box and stringvar, we only want the box [0]
+        entry.delete(0, tk.END) # Clear the field
+        entry.insert(0, cm.GetData('cfg', cfg, setting)) # Insert the saved setting/path
+        #except:
+        #print(f"No key for {setting}")
     
     nameField = cm.GetGlobal("Name")[0] #Insert the name, since it's stored differently
     nameField.delete(0, tk.END)
@@ -223,46 +225,69 @@ def LoadFor(cfg): # Load values for every object
 
 def SaveName(tkString: tk.StringVar): # Save the name, only used to modify the name, not make a new element
     print("Saving name")
-    
-    if tkString.get() == cm.GetGlobal("ConfigDropdown").get(): #We just loaded to field, no need to save
+
+    name = tkString.get()
+    data = cm.GetData('cfg')
+    state = cm.GetGlobal("disable_save")
+    testname = cm.GetGlobal("ConfigDropdown").get()
+
+    print(f"SaveName run with first name, {name}, testname = {testname}, state = {state}")
+    if name == cm.GetGlobal("ConfigDropdown").get(): #We just loaded to field, no need to save
+        print("We just loaded!")
         return
 
-    data = cm.GetData('cfg')
-    data[tkString.get()] = data[cm.GetGlobal("ConfigDropdown").get()]
+    if name in list(data.keys()):
+        entry = cm.GetGlobal("Name")[0]
+        entry.delete(0, tk.END)
+        name += "*"
+        entry.insert(0, name) # Basically reset the box, and insert the old name
+        cm.Popup("You can't have configurations with the same name!")
+    
+    if cm.GetGlobal("disable_save"):
+        print("Disabling name saving!")
+        return
+    #print(f"Names are {name} and {testname}")
+
+    data[name] = data[cm.GetGlobal("ConfigDropdown").get()]
     del data[cm.GetGlobal("ConfigDropdown").get()]
+    #print(data)
     cm.SaveRaw("cfg", data)
     configs.clear()
     Load()
-    cm.GetGlobal("ConfigDropdown").set(tkString.get())
+    cm.GetGlobal("ConfigDropdown").set(name)
+    cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
 
 def AddConfig():
     global configs
-
+    print("==============================")
     #Ensure we won't have keys with the same name
     cfg_index = cm.GetData("app", "config_tab", "cfg_index")
-
-    namesList = list(cm.GetData("cfg").keys()) # We want the whole cfg block
     
-    nameFun = lambda index: f"New Configuration {index}"
-    name = ''
-
-    for names in namesList: # We need to loop it somehow, this is the best way
-        name = nameFun(cfg_index)
-        if nameFun in namesList:
-            cfg_index += 1
-        else:
-            break
-
+    name = f"New Configuration {cfg_index}"
     cfg_index += 1
-
+    print(f"CFG index after {cfg_index}")
+    print(f"New name is {name}")
     cm.SaveData("app", "config_tab", "cfg_index", cfg_index) # Save the index so we won't have to loop again
 
     # Set the name, GetData should automatically append all of the default values!
     AppendConfigName(name)
     cm.GetGlobal("ConfigDropdown").set(name)
+    cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
     LoadFor(name)
 
-
+def DeleteConfig():
+    global configs
+    data = cm.GetData("cfg")
+    del data[cm.GetGlobal("ConfigDropdown").get()] # Delete the config
+    cm.SaveRaw('cfg', data)
+    index = configs.index(cm.GetGlobal("ConfigDropdown").get())
+    configs.clear()
+    Load()
+    if len(configs) <= index: # Do this so we don't encounter index out of range
+        index = len(configs)
+    cm.GetGlobal("ConfigDropdown").set(configs[index])
+    cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
+    
     
 
 

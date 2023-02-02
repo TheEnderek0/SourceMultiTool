@@ -13,7 +13,7 @@ from modules import (
 
 root = tk.Tk()
 root.minsize(1280, 720)
-
+cm.SetGlobal("root", root)
 
 
 def main():
@@ -36,10 +36,10 @@ def main():
     cm.SetGlobal("default_settings", json.load(filew)) #TEMP
 
     cm.LoadJson(f'{os.getcwd()}/settings.json')
-    
+
     cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
-    info.Load(firstLoad=True)
-    config_tab.Load(firstLoad=True)
+    info.Load()
+    config_tab.Load(opening=True)
 
     
 def DefineStyles():

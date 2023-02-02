@@ -98,5 +98,5 @@ def ConfigureCR(frame):
     frame.rowconfigure(index=0, weight=1)
     frame.rowconfigure(index=1, weight=1)
 
-def Load(firstLoad = False):
+def Load():
     pass
