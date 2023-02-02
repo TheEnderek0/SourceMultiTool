@@ -118,7 +118,7 @@ def AddConfigPath(name, extension = '.exe'):
     goto.bind("<Button>", lambda e: Goto(entry.get()))
 
     globals()[name] = entry # Add this field to globals, so we can read and write to it
-    AppendGlobal("EntryNameList", name)
+    AppendGlobal("EntryList", name)
     return entry, entryString
 
 def AppendButtons(container):
