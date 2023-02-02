@@ -160,7 +160,12 @@ def SaveData(type, entry, slot, value):
     global jsonData
     try:#Data exists, modify
         #print("Level 0")
+        print(f"Type {type}")
+        print(f"entry {entry}")
+        print(f"slot {slot}")
+        print(f"Value {value}")
         jsonData[type][entry][slot] = value
+        print(jsonData)
     except: #Build data from scratch, start at first level
         try:
             #print("Level 1")
@@ -179,6 +184,7 @@ def SaveData(type, entry, slot, value):
             #print("Json Data is " + str(jsonData))
 
     json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+    ReloadJson()
 
 
 
@@ -204,6 +210,8 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
             
             jsonData[type] = default_settings[type]
             json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+            ReloadJson()
+
         to_return = jsonData[type]
 
     elif config == 'none': #We want the whole name block
@@ -212,14 +220,17 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
         except KeyError:
             try:
                 jsonData[type] # If this didn't fail, it means we're missing a name or a tab attribute
-                if type == 'cfg': # We are only looking at the app part, not the cfg, since names can be customized
+                if type == 'cfg' and not "New Configuration" in name: # We are only looking at the app part, not the cfg, since names can be customized
                     raise ValueError(f"Invalid name of {name} was passed!")
                 
                 jsonData[type][name] = default_settings[type][def_name]
                 json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                ReloadJson()
+
             except KeyError: # If even upper code failed, this means we are missing the whole block
                 jsonData[type] = default_settings[type]
                 json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                ReloadJson()
                 
         to_return = jsonData[type][name]
     
@@ -236,26 +247,34 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
                 print("Going further")
                 jsonData[type][name][config] = default_settings[type][def_name][config] # We do, so save for this name, attribute of the default name
                 json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                ReloadJson()
+
             except KeyError:
                 try:
                     print("Trying structure")
                     jsonData[type] # Check if we have the block
                     print("Passed")
-                    if type == 'cfg':
+                    if type == 'cfg' and not "New Configuration" in name:
                         print("Raising error")
                         raise ValueError(f"Invalid name of {name} was passed!") # We only look at the app!
 
                     jsonData[type][name] = default_settings[type][name]
                     json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                    ReloadJson()
+
                 except KeyError: #We don't even have the block
                     jsonData[type] = default_settings[type]
                     json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                    ReloadJson()
         print(jsonData)
         to_return = jsonData[type][name][config]
 
     return to_return
 
-
+def ReloadJson():
+    global jsonData
+    jsonData = {} #Flush the variable
+    LoadJson(savePath)
 
 def SetGlobal(name: str, value):
     '''Set a global, or change its value'''
@@ -279,7 +298,7 @@ def SaveForCFG(name, tkString: tk.StringVar):
     '''Save state for an cfg attribute'''
     if globals()["disable_save"] == True:
         return
-    print(f"Saving for {name}")
+    print(f"Saving {name} for " + str(globals()["ConfigDropdown"].get()))
     SaveData("cfg", globals()["ConfigDropdown"].get(), name, tkString.get())
 
 def SaveForAPP(tab: str, name: str, value):

@@ -57,6 +57,8 @@ def SaveSelector(cont):
     addButton.grid(column=1, row=0, sticky='ew', padx=10, pady=20)
     deleteButton.grid(column=2, row=0, sticky='ew', padx=10, pady=20)
 
+    addButton.bind("<Button>", lambda e: AddConfig())
+
 
 
 def PathSelect(container):
@@ -233,12 +235,34 @@ def SaveName(tkString: tk.StringVar): # Save the name, only used to modify the n
     Load()
     cm.GetGlobal("ConfigDropdown").set(tkString.get())
 
-#def AddConfig():
-#    global configs
-#
-#    #Ensure we won't have keys with the same name
-#    cfg_index = 
-#    
-#    if cfg_index > 0:
-#        name += (' ' + str(cfg_index))
+def AddConfig():
+    global configs
+
+    #Ensure we won't have keys with the same name
+    cfg_index = cm.GetData("app", "config_tab", "cfg_index")
+
+    namesList = list(cm.GetData("cfg").keys()) # We want the whole cfg block
+    
+    nameFun = lambda index: f"New Configuration {index}"
+    name = ''
+
+    for names in namesList: # We need to loop it somehow, this is the best way
+        name = nameFun(cfg_index)
+        if nameFun in namesList:
+            cfg_index += 1
+        else:
+            break
+
+    cfg_index += 1
+
+    cm.SaveData("app", "config_tab", "cfg_index", cfg_index) # Save the index so we won't have to loop again
+
+    # Set the name, GetData should automatically append all of the default values!
+    AppendConfigName(name)
+    cm.GetGlobal("ConfigDropdown").set(name)
+    LoadFor(name)
+
+
+    
+
 
