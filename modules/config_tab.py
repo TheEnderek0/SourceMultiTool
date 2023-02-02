@@ -4,7 +4,6 @@ from . import common_lib as cm
 import os
 
 PATH_INFO_TEXT = "Path setup:"
-DFONT = ("Arial", 12)
 
 saveDictionary = {}
 
@@ -37,7 +36,7 @@ def SaveSelector(cont):
 
     #################
     # Selector
-    selector = ttk.Combobox(sFrame, state='read-only', values=[])                    #   Make the combobox widget, the selector
+    selector = ttk.Combobox(sFrame, state='readonly', values=[])                    #   Make the combobox widget, the selector
     selector.grid(column = 0, row = 0, sticky='ew', padx=10, pady=20)                                     #
 
     selector.bind("<<ComboboxSelected>> ", lambda e: LoadFor(selector.get()))           #   Bind the LoadFor function to the widget, every time user changes the selection load the data for that selection.
@@ -73,7 +72,7 @@ def PathSelect(container):
     label = ttk.Label(mainFrame,              
         text=PATH_INFO_TEXT,                  
         wraplength=1200,                      
-        font = (DFONT[0], DFONT[1], "bold"),  
+        font = (cm.GetGlobal("font")[0], cm.GetGlobal("font")[1], "bold"),  
         justify='center',                     
         anchor='c',                           
         )                                     
@@ -115,7 +114,7 @@ def PathSelect(container):
 
     nameLabel = ttk.Label(canvasFrame,
         text = "Name",
-        font = DFONT,
+        font = cm.GetGlobal("font"),
         justify="center",
         anchor='c',
         padding = (20, 0, 10, 0)
@@ -127,7 +126,7 @@ def PathSelect(container):
 
     nameBox = ttk.Entry(canvasFrame,
         style = "CFG.TEntry",
-        font = ("Consolas", DFONT[1], 'normal'),
+        font = ("Consolas", cm.GetGlobal("font")[1], 'normal'),
         textvariable=nameString
     )
     nameBox.grid(column=1, row=0, sticky='ew')
@@ -135,7 +134,7 @@ def PathSelect(container):
 
     gameinfoLabel = ttk.Label(canvasFrame, 
         text = "GameInfo",
-        font = DFONT,
+        font = cm.GetGlobal("font"),
         justify='center',
         anchor='c',
         padding = (20, 0, 10, 0)
@@ -147,7 +146,7 @@ def PathSelect(container):
 
     gameinfoBox = ttk.Entry(canvasFrame,
         style = "CFG.TEntry",
-        font = ("Consolas", DFONT[1], 'normal'),
+        font = ("Consolas", cm.GetGlobal("font")[1], 'normal'),
         textvariable=gameinfoString
     )
     gameinfoBox.grid(column=1, row=1, sticky='ew')
@@ -183,11 +182,14 @@ def SaveDefault(): # Load default state and save, used when settings.json is emp
     cm.GetGlobal("ConfigDropdown").config(values = ("New Config"))
     cm.SaveData("cfg", "NewSave", 'GameInfo', '')
 
-def Load(): # Loads this module's dependent settings
+def Load(firstLoad = False): # Loads this module's dependent settings
     data = cm.RetrieveJson() 
-    configs = data["cfg"].keys() #Get the list of names
+    configs = list(data["cfg"].keys()) #Get the list of names
     for item in configs: # For every name, append it to the ConfigDropdown
         AppendConfigName(item)
+    if firstLoad:
+        cm.GetGlobal("ConfigDropdown").set(configs[0]) #TEMP WORKAROUND, UNTIL I CODE APP PROPERTIES
+        LoadFor(configs[0])                            # ^^^
 
 def LoadFor(cfg): # Load values for every object
     print("Loading for " + str(cfg))

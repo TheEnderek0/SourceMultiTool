@@ -38,8 +38,8 @@ def main():
         config_tab.SaveDefault()
 
     cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
-    info.Load()
-    config_tab.Load()
+    info.Load(firstLoad=True)
+    config_tab.Load(firstLoad=True)
 
     
 def DefineStyles():

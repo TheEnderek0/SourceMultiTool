@@ -101,5 +101,5 @@ def ConfigureCR(frame):
 def SaveDefault():
     pass
 
-def Load():
+def Load(firstLoad = False):
     pass
