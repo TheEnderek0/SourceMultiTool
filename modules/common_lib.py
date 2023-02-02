@@ -8,6 +8,8 @@ import os
 jsonData = {}
 savePath = ''
 
+default_settings = {} # Dictionary storing default settings, these are appended by modules on startup
+
 def CalculateAspectRatio(img):
     '''Calculates aspect ratio of an image'''
     width, height = img.size
@@ -116,6 +118,7 @@ def AddConfigPath(name, extension = '.exe'):
     goto.bind("<Button>", lambda e: Goto(entry.get()))
 
     globals()[name] = entry # Add this field to globals, so we can read and write to it
+    AppendGlobal("EntryNameList", name)
     return entry, entryString
 
 def AppendButtons(container):
@@ -179,8 +182,80 @@ def SaveData(type, entry, slot, value):
 
 
 
-def RetrieveJson():
-    return jsonData
+def GetData(type: str, name: str = 'none', config: str = 'none'):
+    global jsonData
+    to_return = {}
+
+    if type != 'cfg' and type != 'app':
+        raise ValueError(f"Type {type} is invalid!")
+
+    if type == 'cfg':
+        def_name = 'Configuration'
+    else:
+        def_name = name
+
+
+    if name == 'none': #We want the whole app/cfg block
+        if config != 'none':
+            raise ValueError("Name is not set, but config is!")
+        try:
+            to_return = jsonData[type]
+        except KeyError: # This part doesn't exist, return and save the default one
+            
+            jsonData[type] = default_settings[type]
+            json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+        to_return = jsonData[type]
+
+    elif config == 'none': #We want the whole name block
+        try:
+            to_return = jsonData[type][name]
+        except KeyError:
+            try:
+                jsonData[type] # If this didn't fail, it means we're missing a name or a tab attribute
+                if type == 'cfg': # We are only looking at the app part, not the cfg, since names can be customized
+                    raise ValueError(f"Invalid name of {name} was passed!")
+                
+                jsonData[type][name] = default_settings[type][def_name]
+                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+            except KeyError: # If even upper code failed, this means we are missing the whole block
+                jsonData[type] = default_settings[type]
+                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                
+        to_return = jsonData[type][name]
+    
+    else: #We want a specific element
+        try:
+            print("Tried!")
+            to_return = jsonData[type][name][config]
+            print("Going further")
+        except KeyError: # We don't have this config
+            try:
+                print("Trying type name")
+                print(jsonData)
+                jsonData[type][name] #Check if we have this name in general
+                print("Going further")
+                jsonData[type][name][config] = default_settings[type][def_name][config] # We do, so save for this name, attribute of the default name
+                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+            except KeyError:
+                try:
+                    print("Trying structure")
+                    jsonData[type] # Check if we have the block
+                    print("Passed")
+                    if type == 'cfg':
+                        print("Raising error")
+                        raise ValueError(f"Invalid name of {name} was passed!") # We only look at the app!
+
+                    jsonData[type][name] = default_settings[type][name]
+                    json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                except KeyError: #We don't even have the block
+                    jsonData[type] = default_settings[type]
+                    json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+        print(jsonData)
+        to_return = jsonData[type][name][config]
+
+    return to_return
+
+
 
 def SetGlobal(name: str, value):
     '''Set a global, or change its value'''
@@ -189,6 +264,10 @@ def SetGlobal(name: str, value):
 def GetGlobal(key: str):
     ''''Get the global from this script's scope'''
     return globals()[key]
+
+def AppendGlobal(key: str, value):
+    '''Append value to a global list'''
+    globals()[key].append(value)
 
 def SaveRaw(type, save):
     '''Saves raw json data, very dangerous! Should only be used for saving the name for CFG tab'''
@@ -200,5 +279,13 @@ def SaveForCFG(name, tkString: tk.StringVar):
     '''Save state for an cfg attribute'''
     if globals()["disable_save"] == True:
         return
-    print("Saving for " + str(name))
+    print(f"Saving for {name}")
     SaveData("cfg", globals()["ConfigDropdown"].get(), name, tkString.get())
+
+def SaveForAPP(tab: str, name: str, value):
+    '''Save state for an app attribute'''
+    if globals()["disable_save"] == True:
+        return
+    print(f"Saving app for {name}")
+    SaveData("app", tab, name, value)
+

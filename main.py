@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+import json ##TEMP
 from modules import (
     common_lib as cm,
     info, # Info tab
@@ -8,7 +9,6 @@ from modules import (
 
     cc # Caption Compiler
     )
-
 
 
 root = tk.Tk()
@@ -32,11 +32,11 @@ def main():
     config_tab.Init(selector)
     cc.Init(selector)
 
-    loadResult = cm.LoadJson(f'{os.getcwd()}/settings.json')
-    if not loadResult:
-        info.SaveDefault()
-        config_tab.SaveDefault()
+    filew = open(f"{os.getcwd()}/set.json", "r")
+    cm.SetGlobal("default_settings", json.load(filew)) #TEMP
 
+    cm.LoadJson(f'{os.getcwd()}/settings.json')
+    
     cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
     info.Load(firstLoad=True)
     config_tab.Load(firstLoad=True)

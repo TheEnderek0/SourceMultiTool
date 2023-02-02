@@ -169,6 +169,7 @@ def PathSelect(container):
     cm.SetGlobal("Name", (nameBox, nameString))                    # Set the values
     cm.SetGlobal("GameInfo", (gameinfoBox, gameinfoString))        #
     cm.SetGlobal("ConfigWindow", (canvasFrame, 2))  # <- Used for module specific fields
+    cm.SetGlobal("EntryNameList", ["GameInfo"])
 
 
 def AppendConfigName(cfg): #Add this config name to the list of configs and update the ConfigDropdown widget, used for loading
@@ -178,13 +179,17 @@ def AppendConfigName(cfg): #Add this config name to the list of configs and upda
         cm.GetGlobal("ConfigDropdown").config(values=configs)
 
 def SaveDefault(): # Load default state and save, used when settings.json is empty, so only once
-    print("Loading default for config tab!")
-    cm.GetGlobal("ConfigDropdown").config(values = ("New Config"))
-    cm.SaveData("cfg", "NewSave", 'GameInfo', '')
+    #print("Loading default for config tab!")
+    #cm.GetGlobal("ConfigDropdown").config(values = ("New Config"))
+    #cm.SaveData("cfg", "NewSave", 'GameInfo', '')
+    #cm.SaveData("app", "config_tab", 'cfg_index', 0)
+    #cm.SaveData("app", "config_tab", "active_cfg", "NewSave")
+    pass
 
 def Load(firstLoad = False): # Loads this module's dependent settings
-    data = cm.RetrieveJson() 
-    configs = list(data["cfg"].keys()) #Get the list of names
+    #data = cm.RetrieveJson() 
+    #configs = list(data["cfg"].keys()) #Get the list of names
+    configs = list(cm.GetData('cfg'))
     for item in configs: # For every name, append it to the ConfigDropdown
         AppendConfigName(item)
     if firstLoad:
@@ -193,16 +198,20 @@ def Load(firstLoad = False): # Loads this module's dependent settings
 
 def LoadFor(cfg): # Load values for every object
     print("Loading for " + str(cfg))
-    data = cm.RetrieveJson()
-    config_dict = data["cfg"] # Get the CFG dictionary
-    settings = config_dict[cfg] # Now get the dictionary that is bound to this name
-
+    #data = cm.RetrieveJson()
+    #config_dict = data["cfg"] # Get the CFG dictionary
+    #settings = config_dict[cfg] # Now get the dictionary that is bound to this name
+    settings = cm.GetData('cfg', cfg)
+    
     cm.SetGlobal("disable_save", True)  # Disable saving, so it doesn't clear the field and save it as clear, ruining the save
 
-    for setting in settings.keys(): # For every name in keys
-        entry = cm.GetGlobal(setting)[0] # Retrieve the entry key, it's a tuple of the entry box and stringvar, we only want the box [0]
-        entry.delete(0, tk.END) # Clear the field
-        entry.insert(0, settings[setting]) # Insert the saved setting/path
+    for setting in cm.GetGlobal("EntryNameList"): # For every name in entries, we cannot do keys because user can modify the settings!
+        try:
+            entry = cm.GetGlobal(setting)[0] # Retrieve the entry key, it's a tuple of the entry box and stringvar, we only want the box [0]
+            entry.delete(0, tk.END) # Clear the field
+            entry.insert(0, cm.GetData('cfg', cfg, setting)) # Insert the saved setting/path
+        except:
+            print(f"No key for {setting}")
     
     nameField = cm.GetGlobal("Name")[0] #Insert the name, since it's stored differently
     nameField.delete(0, tk.END)
@@ -210,16 +219,26 @@ def LoadFor(cfg): # Load values for every object
 
     cm.SetGlobal("disable_save", False) # Enable saving again, we're done loading
 
-def SaveName(tkString: tk.StringVar): # Save the name
+def SaveName(tkString: tk.StringVar): # Save the name, only used to modify the name, not make a new element
     print("Saving name")
     
     if tkString.get() == cm.GetGlobal("ConfigDropdown").get(): #We just loaded to field, no need to save
         return
 
-    data = cm.RetrieveJson()["cfg"]
+    data = cm.GetData('cfg')
     data[tkString.get()] = data[cm.GetGlobal("ConfigDropdown").get()]
     del data[cm.GetGlobal("ConfigDropdown").get()]
     cm.SaveRaw("cfg", data)
     configs.clear()
     Load()
     cm.GetGlobal("ConfigDropdown").set(tkString.get())
+
+#def AddConfig():
+#    global configs
+#
+#    #Ensure we won't have keys with the same name
+#    cfg_index = 
+#    
+#    if cfg_index > 0:
+#        name += (' ' + str(cfg_index))
+
