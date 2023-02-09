@@ -8,7 +8,13 @@ import os
 jsonData = {}
 savePath = ''
 
+configuration = None # A tk.StringVar used to store the current config
+
 default_settings = {} # Dictionary storing default settings, these are appended by modules on startup
+
+def Init(a):
+    global configuration
+    configuration = tk.StringVar(a) # A string used to store the current config
 
 def CalculateAspectRatio(img):
     '''Calculates aspect ratio of an image'''
@@ -63,33 +69,37 @@ def SetPath(field: ttk.Entry, filetype: str):
     field.delete(0, tk.END)
     field.insert(0, Select(filetype))
 
-def Goto(path: str):
+def Goto(path: str, select = True):
     '''Shows the file/folder in explorer'''
     path = path.replace("/", '\\')
-    openstr = f'explorer /select,"{path}"'
+    if select:
+        openstr = f'explorer /select,"{path}"'
+    else:
+        openstr = f'explorer "{path}"'
     os.system(openstr)
 
-def Select(type):
+def Select(type:list):
     """ Opens up file dialog\ntype - extension of the file, pass 'folder' to for folder selection."""
 
     if type == 'folder':
         return fd.askdirectory()
     else:
-        return fd.askopenfilename(filetypes=[("", type)])
+        return fd.askopenfilename(filetypes=type)
 
-def AddConfigPath(name, extension = '.exe'):
+def AddConfigPath(name, shownName, extension = '.exe'):
     '''Adds config path to the config tab, returns the a tuple of (ttk.Entry, tk.StringVar) elements'''
     cfgWindow = GetGlobal("ConfigWindow")
 
-    cfgWindow[1] += 1
-    SetGlobal("ConfigWindow", (cfgWindow[0], cfgWindow[1]))
-    current_row = cfgWindow[1]
+
     container = cfgWindow[0]
+    current_row = cfgWindow[1]
+    current_row += 1
+    SetGlobal("ConfigWindow", (container, current_row))
 
     container.rowconfigure(index = current_row, weight = 0)
 
     label = ttk.Label(container,
-        text = name,
+        text = shownName,
         font = GetGlobal("font"),
         justify='center',
         anchor='c',
@@ -100,7 +110,7 @@ def AddConfigPath(name, extension = '.exe'):
 
     entry = ttk.Entry(container,
         style = "CFG.TEntry",
-        font = ("Consolas", GetGlobal("font"), 'normal'),
+        font = ("Consolas", GetGlobal("font")[1], 'normal'),
         textvariable=entryString
     )
 
@@ -114,10 +124,11 @@ def AddConfigPath(name, extension = '.exe'):
 
     entryString.trace("w", lambda a, b, c: SaveForCFG(name, entryString))
 
-    select.bind("<Button>", lambda e: SetPath(entry, (extension)))
+    select.bind("<Button>", lambda e: SetPath(entry, [("", extension)]))
     goto.bind("<Button>", lambda e: Goto(entry.get()))
+    entryString.trace("w", lambda e, amogus, sus: CheckPathValidity(entry))
 
-    globals()[name] = entry # Add this field to globals, so we can read and write to it
+    globals()[name] = (entry, entryString) # Add this field to globals, so we can read and write to it
     AppendGlobal("EntryList", name)
     return entry, entryString
 
@@ -131,7 +142,7 @@ def AppendButtons(container):
         text = 'Show',
         style = 'CFG.TButton',
     )
-
+    
     return Select, Goto
 
 def Popup(text):
@@ -156,6 +167,138 @@ def Popup(text):
     window.attributes("-topmost", 1)
     window.grab_set()
 
+def ModuleWindow(container):
+    container.rowconfigure(index = 0, weight = 1)
+    container.rowconfigure(index = 1, weight = 0)
+    container.columnconfigure(index = 0, weight = 1)
+
+    WindowFrame = ttk.Frame(container, borderwidth=3, relief="flat", padding=(10, 10, 10, 10))
+    WindowFrame.grid(column=0, row=0, sticky='nsew')
+
+    ErrorFrame = ttk.Frame(container, borderwidth=2, relief='groove', padding=(10, 10, 10, 10))
+    ErrorFrame.grid(column=0, row=1, sticky='nsew')
+    ErrorFrame.rowconfigure(index = 0, weight = 1)
+    ErrorFrame.columnconfigure(index = 0, weight = 1)
+
+    ErrorLabel = ttk.Label(ErrorFrame,
+                            foreground='Red',
+                            justify='left',
+                            anchor='w',
+                            font = (globals()['font'][0], globals()['font'][1], 'bold'),
+                            text='Sussy amogus?'
+                           )
+    ErrorLabel.grid(column = 0, row = 0, sticky='ew')
+    return WindowFrame, ErrorLabel
+
+def IObars(WindowFrame):
+    '''Adds and configures Input Output entries'''
+    WindowFrame.columnconfigure(index = 0, weight = 0)  # For the folder or file radiobutton
+    WindowFrame.columnconfigure(index = 1, weight = 0) # For the labels
+    WindowFrame.columnconfigure(index = 2, weight = 1) # for the entry box
+    WindowFrame.columnconfigure(index = 3, weight = 0) # for select, show buttons
+    WindowFrame.columnconfigure(index = 4, weight = 0)
+    
+    WindowFrame.rowconfigure(index = 0, weight = 0)
+    WindowFrame.rowconfigure(index = 1, weight = 0)
+
+    InputLabel = ttk.Label(WindowFrame,
+                           font = GetGlobal('font')[0],
+                           text = "Input",
+                           padding = (10, 10, 10, 10),
+                           )
+    OutputLabel = ttk.Label(WindowFrame,
+                            font = GetGlobal('font'),
+                            text = "Output",
+                            padding = (10, 10, 10, 10),
+                            )
+
+    ExtensionSelectorOne = ttk.Combobox(WindowFrame,
+                                            state='readonly',
+                                            values=("File (.txt)", "Folder")
+                                        )
+    ExtensionSelectorTwo = ttk.Combobox(WindowFrame,
+                                            state='readonly',
+                                            values=("Folder", "Default Game Directory")
+                                           )
+
+    ExtensionSelectorOne.grid(column=1, row=0, sticky='ew', padx=5, pady=5)
+    ExtensionSelectorTwo.grid(column=1, row=1, sticky='ew', padx=5, pady=5)
+
+
+    InputLabel.grid(column = 0, row = 0, sticky = 'ew')
+    OutputLabel.grid(column = 0, row = 1, sticky='ew')
+
+    InputString = tk.StringVar(WindowFrame)
+    OutputString = tk.StringVar(WindowFrame)
+
+
+    InputEntryBox = ttk.Entry(WindowFrame,
+                                style = "CFG.TEntry",
+                                textvariable=InputString
+                              )
+    OutputEntryBox = ttk.Entry(WindowFrame,
+                                style = "CFG.TEntry",
+                                textvariable=OutputString
+                               )
+    
+    InputEntryBox.grid(column=2, row=0, sticky='ew', pady = 5)
+    OutputEntryBox.grid(column=2, row=1, sticky='ew', pady = 5)
+
+    ISelectButton, IGOTOButton = AppendButtons(WindowFrame)
+    IGOTOButton.bind("<Button>", lambda e: GoToAdv(InputEntryBox.get(), ExtensionSelectorOne.get()))
+    
+    OSelectButton, OGOTOButton = AppendButtons(WindowFrame)
+    OSelectButton.bind("<Button>", lambda e: SetPath(OutputEntryBox, 'folder'))
+    OGOTOButton.bind("<Button>", lambda e: Goto(OutputEntryBox.get(),select=False))
+
+    ISelectButton.grid(column = 3, row = 0, sticky='ew')
+    OSelectButton.grid(column = 3, row = 1, sticky='ew')
+
+    IGOTOButton.grid(column = 4, row = 0, sticky='ew')
+    OGOTOButton.grid(column = 4, row = 1, sticky='ew')
+
+    InputString.trace_add("write", lambda a, b, c: CheckPathValidity(InputEntryBox, ExtensionSelectorOne.get()))
+    OutputString.trace_add("write", lambda e, a, b: CheckPathValidity(OutputEntryBox, 'folder'))
+    return InputString, OutputString, ExtensionSelectorOne, ExtensionSelectorTwo, ISelectButton, InputEntryBox, OutputEntryBox
+
+def OptionCanvas(container):
+    container.columnconfigure(index=0, weight=1)
+    container.columnconfigure(index=1, weight=0)
+    container.rowconfigure(index=0, weight=1)
+
+    scrollbar = ttk.Scrollbar(container, orient='vertical')
+    scrollbar.grid(column=1, row=0, sticky='ns')
+
+    canvas = tk.Canvas(container, yscrollcommand=scrollbar.set, borderwidth=1, relief='sunken')
+    canvas.grid(column=0, row=0, sticky='nsew')
+    scrollbar.configure( command=canvas.yview )
+    canvasFrame = ttk.Frame(canvas)
+    canvasFrame.pack(fill = 'both', expand = True, padx=20, pady=20)
+
+    return canvasFrame
+
+def GoToAdv(path, state):
+    if 'File' in state:
+        Goto(path, select = True)
+    else:
+        Goto(path, select = False)
+
+def CheckPathValidity(entrybox: tk.Entry, state='File'):
+    '''Checks if a path is valid, and sets the text colour of the entrybox to green/red accordingly'''
+    path = entrybox.get()
+    correction = False
+    print("Checking path for " + str(entrybox))
+    if 'File' in state and os.path.exists(path):
+        correction = os.path.isfile(path)
+    elif os.path.exists(path):
+        correction = os.path.isdir(path)
+    if correction:
+        entrybox.configure(foreground='green')
+    else:
+        entrybox.configure(foreground='red')
+    print(correction)
+
+
 
 # Save managment
 
@@ -163,6 +306,7 @@ def Popup(text):
 def LoadJson(path: str):
     global jsonData
     global savePath
+
     savePath = path
     try:
         file = open(path, "r")
@@ -173,6 +317,7 @@ def LoadJson(path: str):
     except:
         open(path, "w")
         return False
+    
 
 
 

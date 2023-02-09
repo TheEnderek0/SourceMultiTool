@@ -30,8 +30,8 @@ def SaveSelector(cont):
     sFrame.grid(column=0, columnspan=2, row=0, sticky='new')                           #
 
     sFrame.columnconfigure(index = 0, weight = 5)                                       #
-    sFrame.columnconfigure(index = 1, weight = 1)                                       #   Configure the grid for the sFrame
-    sFrame.columnconfigure(index = 2, weight = 1)                                       #
+    sFrame.columnconfigure(index = 1, weight = 0)                                       #   Configure the grid for the sFrame
+    sFrame.columnconfigure(index = 2, weight = 0)                                       #
     sFrame.rowconfigure(index = 0, weight = 0)                                          #
 
     #################
@@ -45,12 +45,12 @@ def SaveSelector(cont):
 
     # Add, Delete buttons
     addButton = ttk.Button(sFrame,
-        text="Add new configuration",
+        text="Add New Configuration",
         style = 'CFG.TButton',
     )
 
     deleteButton = ttk.Button(sFrame,
-        text = "Delete configuration",
+        text = "Delete Configuration",
         style = "CFG.TButton",
     )
 
@@ -153,17 +153,17 @@ def PathSelect(container):
         textvariable=gameinfoString
     )
     gameinfoBox.grid(column=1, row=1, sticky='ew')
+    gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File'))
 
-
-    nameString.trace("w", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
-    gameinfoString.trace("w", lambda a, b, c: cm.SaveForCFG("GameInfo", gameinfoString))
+    nameString.trace_add("write", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
+    gameinfoString.trace_add("write", lambda a, b, c: cm.SaveForCFG("GameInfo", gameinfoString))
 
 
     giSelect, giGoto = cm.AppendButtons(canvasFrame) # Create the buttons, for GameInfo bar
     giSelect.grid(column=2, row=1, sticky='ew', padx = 10)
     giGoto.grid(column=3, row=1, sticky='ew')
 
-    giSelect.bind("<Button>", lambda e: cm.SetPath(gameinfoBox, (".txt"))) # Bind the Select button, for path selection
+    giSelect.bind("<Button>", lambda e: cm.SetPath(gameinfoBox, [("Text files", ".txt")])) # Bind the Select button, for path selection
     giGoto.bind("<Button>", lambda e: cm.Goto(gameinfoBox.get())) # Bind the Goto/Show button, to show the path 
 
     separator = ttk.Separator(canvasFrame, orient='horizontal') # Separator for the module dependend Entries
@@ -218,12 +218,14 @@ def LoadFor(cfg): # Load values for every object
         entry = cm.GetGlobal(setting)[0] # Retrieve the entry key, it's a tuple of the entry box and stringvar, we only want the box [0]
         entry.delete(0, tk.END) # Clear the field
         entry.insert(0, cm.GetData('cfg', cfg, setting)) # Insert the saved setting/path
+        cm.CheckPathValidity(entry)
         #except:
         #print(f"No key for {setting}")
     
     nameField = cm.GetGlobal("Name")[0] #Insert the name, since it's stored differently
     nameField.delete(0, tk.END)
     nameField.insert(0, cfg)
+    cm.GetGlobal("configuration").set(cfg) # Set this configuration, this will make a chain reaction for other modules to load the data
 
     cm.SetGlobal("disable_save", False) # Enable saving again, we're done loading
 
