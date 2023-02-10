@@ -81,7 +81,7 @@ def Goto(path: str, select = True):
 def Select(type:list):
     """ Opens up file dialog\ntype - extension of the file, pass 'folder' to for folder selection."""
 
-    if type == 'folder':
+    if type[0][1] == 'folder':
         return fd.askdirectory()
     else:
         return fd.askopenfilename(filetypes=type)
@@ -100,7 +100,7 @@ def AddConfigPath(name, shownName, extension = '.exe'):
 
     label = ttk.Label(container,
         text = shownName,
-        font = GetGlobal("font"),
+        style = 'ShortInfo.TLabel',
         justify='center',
         anchor='c',
         padding = (20, 0, 10, 0)
@@ -109,10 +109,14 @@ def AddConfigPath(name, shownName, extension = '.exe'):
     entryString = tk.StringVar(container)
 
     entry = ttk.Entry(container,
-        style = "CFG.TEntry",
-        font = ("Consolas", GetGlobal("font")[1], 'normal'),
+        style = "Path.TEntry",
+        font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()),
         textvariable=entryString
     )
+
+    GetGlobal('TEntry_font').trace_add(      'write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
+    GetGlobal('TEntry_font_size').trace_add( 'write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
+    GetGlobal('TEntry_font_style').trace_add('write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
 
     select, goto = AppendButtons(container)
 
@@ -135,12 +139,12 @@ def AddConfigPath(name, shownName, extension = '.exe'):
 def AppendButtons(container):
     Select = ttk.Button(container,
         text= 'Select',
-        style = 'CFG.TButton',
+        style = 'Small.TButton',
     )
 
     Goto = ttk.Button(container,
         text = 'Show',
-        style = 'CFG.TButton',
+        style = 'Small.TButton',
     )
     
     return Select, Goto
@@ -152,18 +156,17 @@ def Popup(text):
     )
     label = ttk.Label(window, 
         text=text,
-        font=globals()['font'],
-        borderwidth=5,
-        relief='flat'
+        style='INFO.TLabel'
         )
 
     label.pack(fill='x', padx=50, pady=25)
 
     button_close = ttk.Button(window, 
         text="Close", 
+        style='Small.TButton',
         command=window.destroy)
 
-    button_close.pack(fill='x')
+    button_close.pack(fill='x', padx=50)
     window.attributes("-topmost", 1)
     window.grab_set()
 
@@ -172,19 +175,18 @@ def ModuleWindow(container):
     container.rowconfigure(index = 1, weight = 0)
     container.columnconfigure(index = 0, weight = 1)
 
-    WindowFrame = ttk.Frame(container, borderwidth=3, relief="flat", padding=(10, 10, 10, 10))
+    WindowFrame = ttk.Frame(container, style='Border.TFrame', padding=(10, 10, 10, 10))
     WindowFrame.grid(column=0, row=0, sticky='nsew')
 
-    ErrorFrame = ttk.Frame(container, borderwidth=2, relief='groove', padding=(10, 10, 10, 10))
-    ErrorFrame.grid(column=0, row=1, sticky='nsew')
+    ErrorFrame = ttk.Frame(container, style='Border.TFrame', padding=(10, 10, 10, 10))
+    ErrorFrame.grid(column=0, row=1, sticky='nsew',padx=10,pady=5)
     ErrorFrame.rowconfigure(index = 0, weight = 1)
     ErrorFrame.columnconfigure(index = 0, weight = 1)
 
     ErrorLabel = ttk.Label(ErrorFrame,
-                            foreground='Red',
+                            style='Error.TLabel',
                             justify='left',
                             anchor='w',
-                            font = (globals()['font'][0], globals()['font'][1], 'bold'),
                             text='Sussy amogus?'
                            )
     ErrorLabel.grid(column = 0, row = 0, sticky='ew')
@@ -202,23 +204,25 @@ def IObars(WindowFrame):
     WindowFrame.rowconfigure(index = 1, weight = 0)
 
     InputLabel = ttk.Label(WindowFrame,
-                           font = GetGlobal('font')[0],
+                           style='ShortInfo.TLabel',
                            text = "Input",
                            padding = (10, 10, 10, 10),
                            )
     OutputLabel = ttk.Label(WindowFrame,
-                            font = GetGlobal('font'),
+                            style='ShortInfo.TLabel',
                             text = "Output",
                             padding = (10, 10, 10, 10),
                             )
 
     ExtensionSelectorOne = ttk.Combobox(WindowFrame,
                                             state='readonly',
-                                            values=("File (.txt)", "Folder")
+                                            values=("File (.txt)", "Folder"),
+                                            style='IO.TCombobox'
                                         )
     ExtensionSelectorTwo = ttk.Combobox(WindowFrame,
                                             state='readonly',
-                                            values=("Folder", "Default Game Directory")
+                                            values=("Folder", "Default Game Directory"),
+                                            style='IO.TCombobox'
                                            )
 
     ExtensionSelectorOne.grid(column=1, row=0, sticky='ew', padx=5, pady=5)
@@ -233,14 +237,16 @@ def IObars(WindowFrame):
 
 
     InputEntryBox = ttk.Entry(WindowFrame,
-                                style = "CFG.TEntry",
+                                style = "Path.TEntry",
                                 textvariable=InputString
                               )
+    InputEntryBox.config(font=AddFontTraces(InputEntryBox))
     OutputEntryBox = ttk.Entry(WindowFrame,
-                                style = "CFG.TEntry",
+                                style = "Path.TEntry",
                                 textvariable=OutputString
                                )
-    
+    OutputEntryBox.config(font=AddFontTraces(OutputEntryBox))
+
     InputEntryBox.grid(column=2, row=0, sticky='ew', pady = 5)
     OutputEntryBox.grid(column=2, row=1, sticky='ew', pady = 5)
 
@@ -248,7 +254,7 @@ def IObars(WindowFrame):
     IGOTOButton.bind("<Button>", lambda e: GoToAdv(InputEntryBox.get(), ExtensionSelectorOne.get()))
     
     OSelectButton, OGOTOButton = AppendButtons(WindowFrame)
-    OSelectButton.bind("<Button>", lambda e: SetPath(OutputEntryBox, 'folder'))
+    OSelectButton.bind("<Button>", lambda e: SetPath(OutputEntryBox, [("", 'folder')]))
     OGOTOButton.bind("<Button>", lambda e: Goto(OutputEntryBox.get(),select=False))
 
     ISelectButton.grid(column = 3, row = 0, sticky='ew')
@@ -261,6 +267,12 @@ def IObars(WindowFrame):
     OutputString.trace_add("write", lambda e, a, b: CheckPathValidity(OutputEntryBox, 'folder'))
     return InputString, OutputString, ExtensionSelectorOne, ExtensionSelectorTwo, ISelectButton, InputEntryBox, OutputEntryBox
 
+def AddFontTraces(entry):
+    GetGlobal('TEntry_font').trace_add(      'write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
+    GetGlobal('TEntry_font_size').trace_add( 'write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
+    GetGlobal('TEntry_font_style').trace_add('write', lambda a, b, c: entry.configure(font= (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get()) ))
+    return (GetGlobal('TEntry_font').get(), GetGlobal('TEntry_font_size').get(), GetGlobal('TEntry_font_style').get())
+
 def OptionCanvas(container):
     container.columnconfigure(index=0, weight=1)
     container.columnconfigure(index=1, weight=0)
@@ -269,7 +281,11 @@ def OptionCanvas(container):
     scrollbar = ttk.Scrollbar(container, orient='vertical')
     scrollbar.grid(column=1, row=0, sticky='ns')
 
-    canvas = tk.Canvas(container, yscrollcommand=scrollbar.set, borderwidth=1, relief='sunken')
+    canvas = tk.Canvas(container, yscrollcommand=scrollbar.set, borderwidth=GetGlobal('Canvas_borderwidth').get(), relief=GetGlobal('Canvas_relief').get() )
+
+    GetGlobal('Canvas_borderwidth').trace_add('write', lambda a, b, c: canvas.configure(borderwidth=GetGlobal('Canvas_borderwidth').get())) # Make sure it updates when we change to a different style
+    GetGlobal('Canvas_relief').trace_add('write', lambda a, b, c: canvas.configure(relief=GetGlobal('Canvas_relief').get()))
+
     canvas.grid(column=0, row=0, sticky='nsew')
     scrollbar.configure( command=canvas.yview )
     canvasFrame = ttk.Frame(canvas)
@@ -298,7 +314,8 @@ def CheckPathValidity(entrybox: tk.Entry, state='File'):
         entrybox.configure(foreground='red')
     print(correction)
 
-
+def GetHighestDLC():
+    return 0
 
 # Save managment
 
@@ -325,6 +342,9 @@ def SaveData(type, entry, slot, value):
     '''Used to save the data to json'''
     print("Saving data!")
     global jsonData
+    if globals()['disable_save']:
+        return
+
     try:#Data exists, modify
         #print("Level 0")
         print(f"Type {type}")

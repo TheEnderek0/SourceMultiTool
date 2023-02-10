@@ -10,10 +10,12 @@ extension = '',
 outputstate = False # True - defaultgame dir, False - userdir
 
 InputString, OutputString = None, None
+ExtensionSelectorOne, ExtensionSelectorTwo = None, None
+InputEntryBox, OutputEntryBox = None, None
 
 current_config = ''
-
 ParameterGUILabel = None
+InputMode = False #True - file, False - folder
 
 #OPTIONS
 OVerbose = None
@@ -21,11 +23,15 @@ ODLC_st = None
 ODLC_val = None
 LOG_file = None
 LOG_st = None
+Additional_parameters = None
+
 
 def Init(container):
     global EntryBox, EntryVar
     print("Initialising Caption Compile tab")
     global InputString, OutputString
+    global ExtensionSelectorOne, ExtensionSelectorTwo
+    global InputEntryBox, OutputEntryBox
     # Initialise the main frame
     frame = ttk.Frame(container)
     frame.grid(column = 0, row = 0, sticky='nsew')
@@ -35,8 +41,9 @@ def Init(container):
     WindowFrame, ErrorLabel = cm.ModuleWindow(frame)
     WindowFrame.columnconfigure(index=0, weight=1)
     WindowFrame.rowconfigure(index=0, weight=0)
-    WindowFrame.rowconfigure(index=1, weight=2)
-    WindowFrame.rowconfigure(index=2, weight=1)
+    WindowFrame.rowconfigure(index=1, weight=3)
+    WindowFrame.rowconfigure(index=2, weight=0)
+    WindowFrame.rowconfigure(index=3, weight=2)
 
     PathFrame = ttk.Frame(WindowFrame)
     PathFrame.grid(column=0, row=0, sticky='nsew')
@@ -47,8 +54,12 @@ def Init(container):
 
     ExtensionSelectorOne.bind("<<ComboboxSelected>>", lambda e: ChangeExtension(ExtensionSelectorOne.get(), '.txt'))
     ISelectButton.bind('<Button>', lambda e: cm.SetPath(InputEntryBox, [("", extension)]))
-    ExtensionSelectorTwo.bind("<<ComboboxSelected>>", lambda e: SelectorTwo(OutputEntryBox, ExtensionSelectorTwo.get()))
+    ExtensionSelectorTwo.bind("<<ComboboxSelected>>", lambda e: SelectorTwo(OutputEntryBox, OutputString, ExtensionSelectorTwo.get()))
 
+    ExtensionSelectorOne.bind("<<ComboboxSelected>>", lambda e: cm.SaveData("cfg", current_config, MODULE_PREFIX+"InputMode", ExtensionSelectorOne.get()))
+    ExtensionSelectorTwo.bind("<<ComboboxSelected>>", lambda e: cm.SaveData("cfg", current_config, MODULE_PREFIX+"OutputMode", ExtensionSelectorTwo.get()), add=True)
+    InputString.trace_add('write', lambda a, b, c: cm.SaveData('cfg', current_config, MODULE_PREFIX+'Input', InputString.get()))
+    OutputString.trace_add('write', lambda a, b, c: cm.SaveData('cfg', current_config, MODULE_PREFIX+'Output', OutputString.get()))
     cm.GetGlobal('configuration').trace_add('write', lambda a, b, c: LoadFor(cm.GetGlobal('configuration')))
 
     OptionFrame = ttk.Frame(WindowFrame)
@@ -57,14 +68,41 @@ def Init(container):
     MainOptionFrame = cm.OptionCanvas(OptionFrame)
     OptionGUI(MainOptionFrame)
 
+    ParamOverrideFrame = ttk.Frame(WindowFrame)
+    ParamOverrideFrame.grid(column=0, row=2, sticky='nsew',pady=20)
+    ParamOverrideFrame.columnconfigure(index=0, weight=1)
+    ParamOverrideFrame.rowconfigure(index=0, weight=0)
+    ParamOverrideFrame.rowconfigure(index=1, weight=1)
+    POLabel = ttk.Label(ParamOverrideFrame, text='Additional parameters:', style='ShortInfo.TLabel')
+    POLabel.grid(column=0,row=0,sticky='nsew')
+
+    Entry = ttk.Entry(ParamOverrideFrame, style='Other.TEntry')
+    Entry.config(font=cm.AddFontTraces(Entry))
+
+    Entry.grid(column=0,row=1, sticky='nsew')
+
     ParamFrame = ttk.Frame(WindowFrame)
-    ParamFrame.grid(column=0, row=2, sticky='nsew')
+    ParamFrame.grid(column=0, row=3, sticky='nsew')
     ParameterGUI(ParamFrame)
 
+    EntryVar.trace_add('write', lambda a, b, c: UpdateParameters())
+    InputString.trace_add('write', lambda a, b, c: UpdateParameters())
+    OutputString.trace_add('write', lambda a, b, c: UpdateParameters())
+    OVerbose.trace_add('write', lambda a, b, c: UpdateParameters())
+    ODLC_st.trace_add('write', lambda a, b, c: UpdateParameters())
+    ODLC_val.trace_add('write', lambda a, b, c: UpdateParameters())
+    LOG_file.trace_add('write', lambda a, b, c: UpdateParameters())
+    LOG_st.trace_add('write', lambda a, b, c: UpdateParameters())
+
+    OVerbose.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'verbose', OVerbose.get()))
+    ODLC_st.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'auto_dlc', ODLC_st.get()))
+    ODLC_val.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'manual_dlc', ODLC_val.get()))
+    LOG_st.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'log', LOG_st.get()))
+    LOG_file.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'log_path', LOG_file.get()))
     
 def OptionGUI(frame: ttk.Frame):
 
-    global OVerbose, ODLC_st, ODLC_val, LOG_file
+    global OVerbose, ODLC_st, ODLC_val, LOG_file, LOG_st
 
     frame.columnconfigure(index = 0, weight = 0)
     frame.columnconfigure(index = 1, weight = 1)
@@ -77,19 +115,19 @@ def OptionGUI(frame: ttk.Frame):
     LOG_st = tk.BooleanVar(frame)
     LOG_file = tk.StringVar(frame)
 
-    Verbose = ttk.Checkbutton(frame, text='Verbose', style='OPTIONS.TCheckbutton', onvalue=True, offvalue=False, variable=OVerbose)
+    Verbose = ttk.Checkbutton(frame, text='Verbose', style='OptionCheck.TCheckbutton', onvalue=True, offvalue=False, variable=OVerbose)
     Verbose.grid(column=0, row=0, sticky='ew', pady=10)
 
-    VerboseLabel = ttk.Label(frame, font=cm.GetGlobal('font'), justify='left', anchor='w', padding=(20, 0, 0, 0),
-                             text='Print out more logs and data about the compile.'
+    VerboseLabel = ttk.Label(frame, style='LongInfo.TLabel', justify='left', anchor='w', padding=(20, 0, 0, 0),
+                             text='Print out more data about the compile.'
                              )
     VerboseLabel.grid(column=1, row=0, sticky='ew')
-    frame.bind('<Configure>', lambda e: cm.ResizeWrapLength(VerboseLabel, frame.winfo_width(), 1200, 120, 0.7))
+    frame.bind('<Configure>', lambda e: cm.ResizeWrapLength(VerboseLabel, frame.winfo_width(), 1200, 120, endmultiplier=1.5))
 
     frame.rowconfigure(index=1, weight=0)
 
-    DLc = ttk.Checkbutton(frame, text='Automatic DLC', style='OPTIONS.TCheckbutton', onvalue=True, offvalue=False, variable=ODLC_st)
-    DLCLabel = ttk.Label(frame, font=cm.GetGlobal('font'), justify='left', anchor='w', padding=(20, 0, 0, 0),
+    DLc = ttk.Checkbutton(frame, text='Automatic DLC', style='OptionCheck.TCheckbutton', onvalue=True, offvalue=False, variable=ODLC_st)
+    DLCLabel = ttk.Label(frame, style='LongInfo.TLabel', justify='left', anchor='w', padding=(20, 0, 0, 0),
                          text = 'Automatically pass the highest dlc level that this game has. You can disable this and set the dlc level yourself below:'
                          )
     frame.bind('<Configure>', lambda e: cm.ResizeWrapLength(DLCLabel, frame.winfo_width(), 1200, 120, 0.7))
@@ -100,7 +138,7 @@ def OptionGUI(frame: ttk.Frame):
 
     ValidateC = frame.register(ValidateSpinbox)
 
-    DLCSpinbox = ttk.Spinbox(frame, from_=0, to=255, textvariable=ODLC_val, validate='all', validatecommand=(ValidateC, '%P'))
+    DLCSpinbox = ttk.Spinbox(frame, from_=0, to=255, textvariable=ODLC_val, validate='all', validatecommand=(ValidateC, '%P'), style='Option.TSpinbox')
     DLCSpinbox.grid(column=1, row=2, sticky='w', padx=20)
     ODLC_st.trace_add('write', lambda a, b, c: ChangeEntryState(DLCSpinbox, ODLC_st.get()))
 
@@ -109,7 +147,7 @@ def OptionGUI(frame: ttk.Frame):
     LOGButton = ttk.Checkbutton(frame, text='Log To File', style='OPTIONS.TCheckbutton', onvalue=True, offvalue=False, variable=LOG_st)
     LOGButton.grid(column=0, row=3, sticky='ew', pady=10)
 
-    LogLabel = ttk.Label(frame, font=cm.GetGlobal('font'), justify='left', anchor='w', padding=(20, 0, 0, 0),
+    LogLabel = ttk.Label(frame, style='LongInfo.TLabel', justify='left', anchor='w', padding=(20, 0, 0, 0),
                          text = "Log output to a file, set the path and the filename below. You can specify a new path, the file will be created."
                          )
     LogLabel.grid(column=1, row=3, sticky='ew')
@@ -123,7 +161,7 @@ def OptionGUI(frame: ttk.Frame):
     LogFileFrame.columnconfigure(index=2, weight=0)
     LogFileFrame.rowconfigure(index=0,weight=1)
 
-    LogFilePathEntry = ttk.Entry(LogFileFrame, style="CFG.TEntry", textvariable=LOG_file)
+    LogFilePathEntry = ttk.Entry(LogFileFrame, style="Path.TEntry", textvariable=LOG_file)
     LogFilePathEntry.grid(column=0,row=0,sticky='ew')
 
     Select, Goto = cm.AppendButtons(LogFileFrame)
@@ -135,11 +173,11 @@ def OptionGUI(frame: ttk.Frame):
     LOG_st.trace_add('write', lambda a, b, c: ChangeEntryState(LogFilePathEntry, not LOG_st.get()))
 
 def ParameterGUI(frame: ttk.Frame):
-    name = ttk.Label(frame, text="Launch parameters:", style='NL.TLabel', justify='left', anchor='w')
+    name = ttk.Label(frame, text="Launch parameters:", style='ShortInfo.TLabel', justify='left', anchor='w')
 
-    secondaryFrame = ttk.Frame(frame, style='Param.TFrame', borderwidth=5, relief='groove')
+    secondaryFrame = ttk.Frame(frame, style='Border.GrayField.TFrame')
 
-    label = ttk.Label(secondaryFrame, style='Param.TLabel', justify='left', text='')
+    label = ttk.Label(secondaryFrame, style='Small.LongInfo.TLabel', justify='left', text='', anchor='nw')
 
 
     frame.columnconfigure(index=0, weight=1)
@@ -150,36 +188,100 @@ def ParameterGUI(frame: ttk.Frame):
     secondaryFrame.grid(column=0,row=1,sticky='nsew')
     name.grid(column=0, row=0, sticky='nsew')
     label.grid(column=0, row=0, sticky='nsew')
-
+    secondaryFrame.bind('<Configure>', lambda e: cm.ResizeWrapLength(label, frame.winfo_width(), 1200, 120, 0.7))
     global ParameterGUILabel
     ParameterGUILabel = label
 
+def UpdateParameters():
+    '''This is just to display the parameters in the param window'''
+    exe = str(EntryVar.get())
+    game = str(cm.GetGlobal('GameInfo')[1].get())
+    dlc = ''
+    log = ''
+    
+    completePar = f"{exe}    -g {game}   "
+
+    if OVerbose.get():
+        completePar += "-v \n"
+
+    if not ODLC_st.get():
+        dlc = str(ODLC_val.get())
+    else:
+        dlc = str(cm.GetHighestDLC())
+    if dlc != '-1':
+        completePar += f"-d {dlc}   "
+
+
+    if LOG_st.get():
+        head, log = os.path.split(LOG_file.get())
+        completePar += f'-log {log} (And transfer to "{head}")  '
+
+    input = InputString.get()
+
+    if InputMode:
+        completePar += input + "    "
+    else:
+        completePar += f"(Recursively do this for every file in {input})    "
+    
+    outPath = OutputString.get()
+
+    completePar += f"(Transfer file to {outPath})   "
+
+    ParameterGUILabel.configure(text = completePar)
+    
 
 def ChangeExtension(state: str, exten):
-    global extension
+    global extension, InputMode
     if 'File' in state:
         extension = exten
+        InputMode = True
     else:
         extension = 'folder'
+        InputMode = False
     print(extension)
 
-def SelectorTwo(entry: ttk.Entry, state: str):
+def SelectorTwo(entry: ttk.Entry, string:tk.StringVar, state: str):
     global outputstate
     outputstate = "Default" in state
-
     if outputstate:
+        print("Something something")
         gameinfo = cm.GetGlobal('GameInfo')[1].get()
         head, tail = os.path.split(gameinfo)
-        entry.delete(0, tk.END) # Clear the field
-        entry.insert(0, head + '/resource') # Insert the saved setting/path
+        string.set(head + '/resource')
         entry.configure(state="disabled")
     else:
         entry.configure(state="normal")
+    cm.CheckPathValidity(entry, state='folder')
         
  
 def LoadFor(stringVar: tk.StringVar):
+    
+    cm.SetGlobal('disable_save', True)
     global current_config
     current_config = stringVar.get()
+
+    global ODLC_st, OVerbose, ODLC_val, LOG_file, LOG_st
+
+    ExtensionSelectorOne.set(cm.GetData('cfg', current_config, MODULE_PREFIX+"InputMode"))
+    ExtensionSelectorTwo.set(cm.GetData('cfg', current_config, MODULE_PREFIX+"OutputMode"))
+
+    InputEntryBox.delete(0, tk.END)
+    InputEntryBox.insert(0, cm.GetData('cfg', current_config, MODULE_PREFIX+"Input"))
+
+    OutputEntryBox.delete(0, tk.END)
+    OutputEntryBox.insert(0, cm.GetData('cfg', current_config, MODULE_PREFIX+"Output"))
+
+    #App specific loads
+    ODLC_st.set(cm.GetData('app', "captioncompile", "auto_dlc"))
+    OVerbose.set(cm.GetData('app', "captioncompile", "verbose"))
+    ODLC_val.set(cm.GetData('app', "captioncompile", "manual_dlc"))
+    LOG_st.set(cm.GetData('app', "captioncompile", "log"))
+    LOG_file.set(cm.GetData('app', "captioncompile", "log_path"))
+    ChangeExtension(ExtensionSelectorOne.get(), '.txt')
+    print("EXTENSION " + extension)
+    cm.SetGlobal('disable_save', False)
+
+
 
 def ChangeEntryState(entry, state):
     if state:

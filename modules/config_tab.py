@@ -26,7 +26,7 @@ def Init(container):
 
 def SaveSelector(cont):
 
-    sFrame = ttk.Frame(cont, borderwidth=5, relief='groove')                                                       #   Configure the frame for the selector widget, and selector buttons
+    sFrame = ttk.Frame(cont, style='Border.TFrame')                                                       #   Configure the frame for the selector widget, and selector buttons
     sFrame.grid(column=0, columnspan=2, row=0, sticky='new')                           #
 
     sFrame.columnconfigure(index = 0, weight = 5)                                       #
@@ -46,12 +46,12 @@ def SaveSelector(cont):
     # Add, Delete buttons
     addButton = ttk.Button(sFrame,
         text="Add New Configuration",
-        style = 'CFG.TButton',
+        style = 'Small.TButton',
     )
 
     deleteButton = ttk.Button(sFrame,
         text = "Delete Configuration",
-        style = "CFG.TButton",
+        style = "Small.TButton",
     )
 
     addButton.grid(column=1, row=0, sticky='ew', padx=10, pady=20)
@@ -75,9 +75,9 @@ def PathSelect(container):
     label = ttk.Label(mainFrame,              
         text=PATH_INFO_TEXT,                  
         wraplength=1200,                      
-        font = (cm.GetGlobal("font")[0], cm.GetGlobal("font")[1], "bold"),  
         justify='center',                     
-        anchor='c',                           
+        anchor='c',
+        style='ShortInfo.TLabel'                           
         )                                     
     label.grid(column=0, row=0, sticky='nsew', pady=10)
 
@@ -95,7 +95,10 @@ def PathSelect(container):
     scrollbar.grid(column=1, row=0, sticky='ns')
 
     # Create the canvas
-    canvas = tk.Canvas(scrollFrame, yscrollcommand=scrollbar.set, borderwidth=1, relief='sunken')
+    canvas = tk.Canvas(scrollFrame, yscrollcommand=scrollbar.set, borderwidth=cm.GetGlobal('Canvas_borderwidth').get(), relief=cm.GetGlobal('Canvas_relief').get())
+    cm.GetGlobal('Canvas_borderwidth').trace_add('write', lambda a, b, c: canvas.configure(borderwidth=cm.GetGlobal('Canvas_borderwidth').get())) # Make sure it updates when we change to a different style
+    cm.GetGlobal('Canvas_relief').trace_add('write', lambda a, b, c: canvas.configure(relief=cm.GetGlobal('Canvas_relief').get()))
+
     canvas.grid(column=0, row=0, sticky='nsew')
     scrollbar.configure( command=canvas.yview ) # Bind the scrollbar to the canvas
 
@@ -117,7 +120,7 @@ def PathSelect(container):
 
     nameLabel = ttk.Label(canvasFrame,
         text = "Name",
-        font = cm.GetGlobal("font"),
+        style = 'ShortInfo.TLabel',
         justify="center",
         anchor='c',
         padding = (20, 0, 10, 0)
@@ -128,16 +131,17 @@ def PathSelect(container):
     nameString = tk.StringVar(canvasFrame) #Make a string var for further tracing
 
     nameBox = ttk.Entry(canvasFrame,
-        style = "CFG.TEntry",
-        font = ("Consolas", cm.GetGlobal("font")[1], 'normal'),
+        style = "Other.TEntry",
         textvariable=nameString
     )
+    nameBox.config(font = cm.AddFontTraces(nameBox))
+    
     nameBox.grid(column=1, row=0, sticky='ew')
 
 
     gameinfoLabel = ttk.Label(canvasFrame, 
         text = "GameInfo",
-        font = cm.GetGlobal("font"),
+        style = 'ShortInfo.TLabel',
         justify='center',
         anchor='c',
         padding = (20, 0, 10, 0)
@@ -148,10 +152,11 @@ def PathSelect(container):
     gameinfoString = tk.StringVar(canvasFrame)
 
     gameinfoBox = ttk.Entry(canvasFrame,
-        style = "CFG.TEntry",
-        font = ("Consolas", cm.GetGlobal("font")[1], 'normal'),
+        style = "Path.TEntry",
         textvariable=gameinfoString
     )
+    gameinfoBox.config(font=cm.AddFontTraces(gameinfoBox))
+
     gameinfoBox.grid(column=1, row=1, sticky='ew')
     gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File'))
 

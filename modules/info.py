@@ -23,8 +23,6 @@ wikOPIMG = Image.open(WIKPATH)
 GITHUB_URL = 'https://github.com/TheEnderek0/SourceMultiTool'
 WIKI_URL = 'https://github.com/TheEnderek0/SourceMultiTool/wiki'
 
-default_font = 'Arial'
-
 def Init(container):
     print("Initialising info tab")
 
@@ -40,7 +38,7 @@ def Init(container):
 
 
 def InfoFrame(container):
-    inFrame = ttk.Frame(container, padding=(50, 50, 15, 15))
+    inFrame = ttk.Frame(container, style='BorderGrayField.TFrame', padding=(50, 50, 15, 15))
     inFrame.grid(column=0, row=0, sticky="nsew")
 
     inLabel = ttk.Label(inFrame, 
@@ -48,10 +46,7 @@ def InfoFrame(container):
         wraplength = 300,
         anchor='c',
         justify = 'center',
-        style="BW.TLabel",
-        font = (default_font, 15),
-        border=5,
-        relief='groove'
+        style="LongInfo.TLabel",
         )
     inLabel.pack(fill = 'both', expand = True)
     inFrame.bind('<Configure>', lambda e: cm.ResizeWrapLength(inLabel, inFrame.winfo_width(), 400, 120, 0.7))
@@ -63,7 +58,7 @@ def GitHubIcon(container):
     ghFrame.columnconfigure(index=0, weight=1)
     ghFrame.rowconfigure(index = 0, weight=1)
 
-    ghButton = ttk.Button(ghFrame)
+    ghButton = ttk.Button(ghFrame, style='INFO.TButton')
     ghButton.grid(column=0, row=0, sticky="nsew")
 
     ghFrame.grid_propagate(False)
@@ -78,18 +73,11 @@ def WikiButton(container):
     wikiFrame.rowconfigure(index = 0, weight = 1)
     wikiFrame.grid_propagate(False)
 
-    wikiButton = ttk.Button(wikiFrame)
+    wikiButton = ttk.Button(wikiFrame, style='INFO.TButton')
     wikiButton.grid(column=0, row=0, sticky='nsew')
 
     wikiFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(wikiButton, wikOPIMG, "wikiImageFile"))
     wikiButton.bind('<Button>', lambda e: webbrowser.open(url=WIKI_URL, new=2))
-
-
-
-def CreateTestButton(row1, column1, container):
-    button = tk.Button(container)
-    button.grid(column=column1, row=row1, sticky="nsew")
-
 
 def ConfigureCR(frame):
     frame.columnconfigure(index=0, weight=1)
