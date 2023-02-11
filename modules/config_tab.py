@@ -12,7 +12,7 @@ configs = []
 def Init(container):
     print("Initialising Configuration tab")
 
-    frame = ttk.Frame(container)                    # ---|
+    frame = ttk.Frame(container, style='Card.TFrame')                    # ---|
     frame.grid(column=0, row=0, sticky="nsew")      #    | Initialise the main frame for notebook
     container.add(frame, text = 'Configuration')    # ---|
 
@@ -26,7 +26,7 @@ def Init(container):
 
 def SaveSelector(cont):
 
-    sFrame = ttk.Frame(cont, style='Border.TFrame')                                                       #   Configure the frame for the selector widget, and selector buttons
+    sFrame = ttk.Frame(cont, style='TFrame')                                                       #   Configure the frame for the selector widget, and selector buttons
     sFrame.grid(column=0, columnspan=2, row=0, sticky='new')                           #
 
     sFrame.columnconfigure(index = 0, weight = 5)                                       #

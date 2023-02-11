@@ -27,7 +27,7 @@ def Init(container):
     print("Initialising info tab")
 
 
-    frame = ttk.Frame(container)
+    frame = ttk.Frame(container, style='Card.TFrame')
     frame.grid(column=0, row=0, sticky="nsew")
     container.add(frame, text = 'Info')
 
@@ -38,15 +38,15 @@ def Init(container):
 
 
 def InfoFrame(container):
-    inFrame = ttk.Frame(container, style='BorderGrayField.TFrame', padding=(50, 50, 15, 15))
-    inFrame.grid(column=0, row=0, sticky="nsew")
+    inFrame = ttk.Frame(container, style='Border.GrayField.TFrame')
+    inFrame.grid(column=0, row=0, sticky="nsew", padx=50, pady=50)
 
     inLabel = ttk.Label(inFrame, 
         text = INFO_MESSAGE,
         wraplength = 300,
         anchor='c',
         justify = 'center',
-        style="LongInfo.TLabel",
+        style="Border.LongInfo.TLabel",
         )
     inLabel.pack(fill = 'both', expand = True)
     inFrame.bind('<Configure>', lambda e: cm.ResizeWrapLength(inLabel, inFrame.winfo_width(), 400, 120, 0.7))
@@ -64,6 +64,7 @@ def GitHubIcon(container):
     ghFrame.grid_propagate(False)
     ghFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(ghButton, ghOPIMG, "ghImageFile"))
     ghButton.bind('<Button>', lambda e: webbrowser.open(url=GITHUB_URL, new=2))
+    cm.ApplyResizeImage(ghButton, ghOPIMG, "ghImageFile")
 
 def WikiButton(container):
 
@@ -78,6 +79,7 @@ def WikiButton(container):
 
     wikiFrame.bind('<Configure>', lambda e: cm.ApplyResizeImage(wikiButton, wikOPIMG, "wikiImageFile"))
     wikiButton.bind('<Button>', lambda e: webbrowser.open(url=WIKI_URL, new=2))
+    cm.ApplyResizeImage(wikiButton, wikOPIMG, "wikiImageFile")
 
 def ConfigureCR(frame):
     frame.columnconfigure(index=0, weight=1)

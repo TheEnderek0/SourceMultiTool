@@ -42,7 +42,7 @@ def MaximumScale(img, size: tuple):
 
 def ResizeWrapLength(ent, length: int, max: int = 300, min: int = 1, multiplier: float = 0.9, endmultiplier = 1):
     '''Dynamically resizes wrap lenght for ttk.Label'''
-    #print("Resizing Wrap lenght for " + str(ent))
+    print("Resizing Wrap lenght for " + str(ent))
 
     length *= multiplier #Snap multiplier
     if max > length > min:
@@ -175,22 +175,24 @@ def ModuleWindow(container):
     container.rowconfigure(index = 1, weight = 0)
     container.columnconfigure(index = 0, weight = 1)
 
-    WindowFrame = ttk.Frame(container, style='Border.TFrame', padding=(10, 10, 10, 10))
+    WindowFrame = ttk.Frame(container, style='TFrame', padding=(10, 10, 10, 10))
     WindowFrame.grid(column=0, row=0, sticky='nsew')
 
-    ErrorFrame = ttk.Frame(container, style='Border.TFrame', padding=(10, 10, 10, 10))
-    ErrorFrame.grid(column=0, row=1, sticky='nsew',padx=10,pady=5)
-    ErrorFrame.rowconfigure(index = 0, weight = 1)
-    ErrorFrame.columnconfigure(index = 0, weight = 1)
+    BarFrame = ttk.Labelframe(container, style='TLabelframe', labelanchor='n', text='Progress')
+    BarFrame.grid(column=0, row=1, sticky='nsew',padx=10,pady=5)
+    BarFrame.rowconfigure(index = 0, weight = 1)
+    BarFrame.columnconfigure(index = 0, weight = 1)
 
-    ErrorLabel = ttk.Label(ErrorFrame,
-                            style='Error.TLabel',
-                            justify='left',
-                            anchor='w',
-                            text='Sussy amogus?'
+    Bar = ttk.Progressbar(BarFrame,
+                            style='info.Striped.Horizontal.TProgressbar',
+                            orient='horizontal',
+                            mode='determinate',
+                            length=280,
+                            value=75
+                            
                            )
-    ErrorLabel.grid(column = 0, row = 0, sticky='ew')
-    return WindowFrame, ErrorLabel
+    Bar.grid(column = 0, row = 0, sticky='ew', padx=10, pady=(0, 5))
+    return WindowFrame, Bar
 
 def IObars(WindowFrame):
     '''Adds and configures Input Output entries'''
@@ -257,8 +259,8 @@ def IObars(WindowFrame):
     OSelectButton.bind("<Button>", lambda e: SetPath(OutputEntryBox, [("", 'folder')]))
     OGOTOButton.bind("<Button>", lambda e: Goto(OutputEntryBox.get(),select=False))
 
-    ISelectButton.grid(column = 3, row = 0, sticky='ew')
-    OSelectButton.grid(column = 3, row = 1, sticky='ew')
+    ISelectButton.grid(column = 3, row = 0, sticky='ew', padx=5)
+    OSelectButton.grid(column = 3, row = 1, sticky='ew', padx=5)
 
     IGOTOButton.grid(column = 4, row = 0, sticky='ew')
     OGOTOButton.grid(column = 4, row = 1, sticky='ew')
@@ -279,17 +281,18 @@ def OptionCanvas(container):
     container.rowconfigure(index=0, weight=1)
 
     scrollbar = ttk.Scrollbar(container, orient='vertical')
-    scrollbar.grid(column=1, row=0, sticky='ns')
+    scrollbar.grid(column=1, row=0, sticky='ns', padx=(0, 5), pady=(0, 5))
 
     canvas = tk.Canvas(container, yscrollcommand=scrollbar.set, borderwidth=GetGlobal('Canvas_borderwidth').get(), relief=GetGlobal('Canvas_relief').get() )
 
     GetGlobal('Canvas_borderwidth').trace_add('write', lambda a, b, c: canvas.configure(borderwidth=GetGlobal('Canvas_borderwidth').get())) # Make sure it updates when we change to a different style
     GetGlobal('Canvas_relief').trace_add('write', lambda a, b, c: canvas.configure(relief=GetGlobal('Canvas_relief').get()))
 
-    canvas.grid(column=0, row=0, sticky='nsew')
+    canvas.grid(column=0, row=0, sticky='nsew', padx=(5, 0), pady=(0, 5))
     scrollbar.configure( command=canvas.yview )
-    canvasFrame = ttk.Frame(canvas)
-    canvasFrame.pack(fill = 'both', expand = True, padx=20, pady=20)
+    canvasFrame = ttk.Frame(canvas, padding=(20, 20, 20, 20))
+    canvas.create_window((0, 0), window=canvasFrame, anchor='nw')
+    container.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     return canvasFrame
 
@@ -309,13 +312,43 @@ def CheckPathValidity(entrybox: tk.Entry, state='File'):
     elif os.path.exists(path):
         correction = os.path.isdir(path)
     if correction:
-        entrybox.configure(foreground='green')
+        entrybox.configure(style='success.TEntry')
     else:
-        entrybox.configure(foreground='red')
+        entrybox.configure(style='danger.TEntry')
     print(correction)
 
 def GetHighestDLC():
     return 0
+
+def CompileWindow(frame: ttk.Frame):
+    MainCompileFrame = OptionCanvas(frame)
+
+    TextWidget = ttk.Label(MainCompileFrame, style='Compile.TLabel')
+    TextWidget.pack(fill='both', expand=True)
+
+    frame.rowconfigure(index=1, weight=0)
+    ButtonFrame = ttk.Frame(frame)
+
+    ButtonFrame.grid(column=0, columnspan=2, row=1, sticky='ew')
+    ButtonFrame.columnconfigure(index=0, weight=1)
+    ButtonFrame.columnconfigure(index=1, weight=1)
+    ButtonFrame.columnconfigure(index=2, weight=1)
+    ButtonFrame.rowconfigure(index=0, weight=1)
+
+    BCompile = ttk.Button(ButtonFrame, style='Small.TButton', text='Compile!')
+    BStop = ttk.Button(ButtonFrame, style='Compile.TButton', text='Stop')
+    BNext = ttk.Button(ButtonFrame, style='Compile.TButton', text='Next file')
+
+    BCompile.grid(column=0, row=1, sticky='nsew', padx=10, pady=(0, 5))
+    BStop.grid(column=1, row=1, sticky='nsew', padx=10, pady=(0, 5))
+    BNext.grid(column=2, row=1, sticky='nsew', padx=10, pady=(0, 5))
+
+    return TextWidget, BCompile, BStop, BNext
+
+
+# Processes
+
+
 
 # Save managment
 

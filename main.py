@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import os
 import json ##TEMP
+import ttkbootstrap as bs
+
 from modules import (
     common_lib as cm,
     info, # Info tab
@@ -12,12 +14,15 @@ from modules import (
 
 
 FONT = 'Verdana'
-FONT_SIZE = 13
+TITLE_FONT = 'Arial'
+FONT_SIZE = 12
 
 
 root = tk.Tk()
 root.minsize(1280, 720)
 cm.SetGlobal("root", root)
+
+#root.tk.call("source", "./breeze/breeze.tcl")# Load the theme
 
 
 def main():
@@ -52,29 +57,38 @@ def main():
 
     
 def DefineStyles():
-    style = ttk.Style(root)
+    style = bs.Style(theme='darkly')
 
     # Everything #
     style.configure(".")
 
+    style.configure("TNotebook", )
+
     # Labels #
-    style.configure("TLabel") 
-    style.configure("Error.TLabel") # label for displaying errors
-    style.configure("ShortInfo.TLabel") # Short info, like "Paths:", "Options:"
-    style.configure("LongInfo.TLabel") # Long info, like the description of options and so on
-    style.configure("Small.LongInfo.TLabel") # A variant of LongInfo.TLabel with much smaller font
+    style.configure("TLabel", font = (FONT, FONT_SIZE, 'normal')) 
+    style.configure("Error.TLabel", foreground = 'red', font = (FONT, FONT_SIZE, 'bold')) # label for displaying errors
+    style.configure("ShortInfo.TLabel", font = (TITLE_FONT, FONT_SIZE, 'bold')) # Short info, like "Paths:", "Options:"
+    style.configure("LongInfo.TLabel", font = (FONT, FONT_SIZE-2, 'normal')) # Long info, like the description of options and so on
+    style.configure("Border.LongInfo.TLabel", borderwidth=3, relief='groove', background="#e6e6e6", foreground='black', font = (FONT, FONT_SIZE, 'normal'))
+    style.configure("Small.LongInfo.TLabel", font = (FONT, FONT_SIZE - 4, 'normal')) # A variant of LongInfo.TLabel with much smaller font
+
+    style.configure("Compile.TLabel") # Labels showing compile log output
+    
+    # Label frames #
+    style.configure("Big.TLabelframe.Label")
 
     # Buttons #
-    style.configure("Small.TButton") # Used for small buttons
+    style.configure("Small.TButton", font = (TITLE_FONT, FONT_SIZE-2, 'normal')) # Used for small buttons
     style.configure("INFO.TButton") # Used for big info buttons, like the ones in the info tab
 
     # Check Buttons #
-    style.configure("OptionCheck.TCheckbutton") # Used for option checkbuttons, in specific tabs
+    style.configure("Option.info.TCheckbutton", font = (TITLE_FONT, FONT_SIZE, 'bold')) # Used for option checkbuttons, in specific tabs
 
     # Frames #
+    style.configure("Card.TFrame", padding=(10, 10, 10, 10))
     style.configure("Border.TFrame", borderwidth=5, relief='groove') # Normal bordered Tframe
-    style.configure("GrayField.TFrame") # Used for gray-er fields
-    style.configure("Border.GrayField.TFrame") # Gray field with frame
+    style.configure("GrayField.TFrame", background="#e6e6e6") # Used for gray-er fields
+    style.configure("Border.GrayField.TFrame", borderwidth=5, relief='groove') # Gray field with frame
 
     # Dropdowns #
     style.configure("CFG.TCombobox") # Only used for the config selection box in the Configuration tab
@@ -92,21 +106,13 @@ def DefineStyles():
 
     # Canvas #
     #We have to do this by tkvars since canvases are widgets of only tk, not ttk
-    cm.SetGlobal('Canvas_borderwidth', tk.IntVar(root, 5, "Canvas_borderwidth"))
+    cm.SetGlobal('Canvas_borderwidth', tk.IntVar(root, 0, "Canvas_borderwidth"))
     cm.SetGlobal('Canvas_relief', tk.StringVar(root, "sunken", "Canvas_relief"))
 
     # Spinbox #
     style.configure('Option.TSpinbox') # Spinboxes in option panels
 
-    #style.configure("BW.TLabel", foreground="black", background="#e6e6e6")
-    ##style.configure("CFG.TEntry", foreground="black", background="#e6e6e6", font = ("Consolas", cm.GetGlobal("font")[1], 'normal'))
-    #style.configure("CFG.TButton", foreground="black", background="#e6e6e6")
-    #style.configure("OPTIONS.TCheckbutton", font=(cm.GetGlobal('font')[0], cm.GetGlobal('font')[1], 'bold'))
-    #style.configure("NL.TLabel", font=cm.GetGlobal('font')) #Normal label
-    #style.configure("Param.TLabel", font=(cm.GetGlobal('font')[0], cm.GetGlobal('font')[1] - 3), background="#e6e6e6") #Label used to display compile parameters
-    #style.configure("Param.TFrame", borderwidth=5, relief='groove')
-    #style.configure("TEntry", font=('Helvetica', 16))
-
+    print("THEME NAMES " + str(style.theme_names()))
 
 
 main()
