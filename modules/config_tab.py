@@ -158,7 +158,7 @@ def PathSelect(container):
     gameinfoBox.config(font=cm.AddFontTraces(gameinfoBox))
 
     gameinfoBox.grid(column=1, row=1, sticky='ew')
-    gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File'))
+    gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File', ext='.txt'))
 
     nameString.trace_add("write", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
     gameinfoString.trace_add("write", lambda a, b, c: cm.SaveForCFG("GameInfo", gameinfoString))
@@ -173,6 +173,8 @@ def PathSelect(container):
 
     separator = ttk.Separator(canvasFrame, orient='horizontal') # Separator for the module dependend Entries
     separator.grid(column=0, row=2, columnspan=4, sticky="ew", pady=10)
+
+    canvasFrame.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all"))) # Ensure proper scrolling
 
     cm.SetGlobal("Name", (nameBox, nameString))                    # Set the values
     cm.SetGlobal("GameInfo", (gameinfoBox, gameinfoString))        #

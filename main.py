@@ -65,6 +65,7 @@ def DefineStyles():
     style.configure("TNotebook", )
 
     # Labels #
+
     style.configure("TLabel", font = (FONT, FONT_SIZE, 'normal')) 
     style.configure("Error.TLabel", foreground = 'red', font = (FONT, FONT_SIZE, 'bold')) # label for displaying errors
     style.configure("ShortInfo.TLabel", font = (TITLE_FONT, FONT_SIZE, 'bold')) # Short info, like "Paths:", "Options:"
@@ -78,11 +79,12 @@ def DefineStyles():
     style.configure("Big.TLabelframe.Label")
 
     # Buttons #
-    style.configure("Small.TButton", font = (TITLE_FONT, FONT_SIZE-2, 'normal')) # Used for small buttons
+    style.configure("Small.TButton", font = (TITLE_FONT, FONT_SIZE-2, 'bold')) # Used for small buttons
     style.configure("INFO.TButton") # Used for big info buttons, like the ones in the info tab
 
     # Check Buttons #
     style.configure("Option.info.TCheckbutton", font = (TITLE_FONT, FONT_SIZE, 'bold')) # Used for option checkbuttons, in specific tabs
+    style.configure("Option.info.Outline.Toolbutton")
 
     # Frames #
     style.configure("Card.TFrame", padding=(10, 10, 10, 10))

@@ -5,17 +5,22 @@ import os
 
 MODULE_PREFIX = 'CaptionCompile-'
 
-EntryBox, EntryVar = None, None
-extension = '',
-outputstate = False # True - defaultgame dir, False - userdir
+ConfigPath = (None, None)
 
-InputString, OutputString = None, None
-ExtensionSelectorOne, ExtensionSelectorTwo = None, None
-InputEntryBox, OutputEntryBox = None, None
+#----------------------------------------#
+IOString = (None, None)                  #
+#----------------------------------------#
 
-current_config = ''
-ParameterGUILabel = None
-InputMode = False #True - file, False - folder
+ParameterGUILabel = None # Used internally
+
+input_mode = None # BoolVar set by Init() ->  True - file, False - folder # Used for tracking the input mode
+output_mode = None # BoolVar set by Init() -> True - default game dir, False - folder # Used for tracking the output mode
+
+
+Loaded = False # It's true when we finished loading
+
+Compile = None 
+CompileOverrideError = None
 
 #OPTIONS
 OVerbose = None
@@ -23,15 +28,22 @@ ODLC_st = None
 ODLC_val = None
 LOG_file = None
 LOG_st = None
+
+LOG_PathName = ('', '')
+
 Additional_parameters = None
 
 
 def Init(container):
-    global EntryBox, EntryVar
     print("Initialising Caption Compile tab")
-    global InputString, OutputString
-    global ExtensionSelectorOne, ExtensionSelectorTwo
-    global InputEntryBox, OutputEntryBox
+    
+    global ConfigPath
+
+    global IOString
+
+    global input_mode, output_mode
+
+    global CompileOverrideError
     # Initialise the main frame
     frame = ttk.Frame(container, style='Card.TFrame')
     frame.grid(column = 0, row = 0, sticky='nsew')
@@ -48,55 +60,57 @@ def Init(container):
 
     PathFrame = ttk.Frame(WindowFrame)
     PathFrame.grid(column=0, row=0, sticky='nsew')
+
     # Add a config bar for captioncompiler
-    EntryBox, EntryVar = cm.AddConfigPath('captioncompiler', "Caption Compiler")
+    ConfigPath = cm.AddConfigPath('captioncompiler', "Caption Compiler")
     
-    InputString, OutputString, ExtensionSelectorOne, ExtensionSelectorTwo, ISelectButton, InputEntryBox, OutputEntryBox = cm.IObars(PathFrame)
+    # Add IO bars
+    input_mode = tk.BooleanVar(PathFrame, False)
+    output_mode = tk.BooleanVar(PathFrame, False)
 
-    ExtensionSelectorOne.bind("<<ComboboxSelected>>", lambda e: ChangeExtension(ExtensionSelectorOne.get(), '.txt'))
-    ISelectButton.bind('<Button>', lambda e: cm.SetPath(InputEntryBox, [("", extension)]))
-    ExtensionSelectorTwo.bind("<<ComboboxSelected>>", lambda e: SelectorTwo(OutputEntryBox, OutputString, ExtensionSelectorTwo.get()))
-    cm.GetGlobal('GameInfo')[1].trace_add('write', lambda a, b, c: SelectorTwo(OutputEntryBox, OutputString, ExtensionSelectorTwo.get())) # We need to trace if user changes gameinfo
+    IOString = cm.IObars(PathFrame, input_mode, output_mode, '/resource', MODULE_PREFIX, InputCallback=[UpdateParameters]) # Create standard IO input output bars
+    
 
-    ExtensionSelectorOne.bind("<<ComboboxSelected>>", lambda e: cm.SaveData("cfg", current_config, MODULE_PREFIX+"InputMode", ExtensionSelectorOne.get()))
-    ExtensionSelectorTwo.bind("<<ComboboxSelected>>", lambda e: cm.SaveData("cfg", current_config, MODULE_PREFIX+"OutputMode", ExtensionSelectorTwo.get()), add=True)
-    InputString.trace_add('write', lambda a, b, c: cm.SaveData('cfg', current_config, MODULE_PREFIX+'Input', InputString.get()))
-    OutputString.trace_add('write', lambda a, b, c: cm.SaveData('cfg', current_config, MODULE_PREFIX+'Output', OutputString.get()))
     cm.GetGlobal('configuration').trace_add('write', lambda a, b, c: LoadFor(cm.GetGlobal('configuration')))
 
-    OptionLabel = ttk.Label(WindowFrame, style = 'ShortInfo.TLabel', text='Options')
 
+    OptionLabel = ttk.Label(WindowFrame, style = 'ShortInfo.TLabel', text='Options')
     OptionFrame = ttk.Labelframe(WindowFrame, style = 'Big.TLabelframe', labelwidget=OptionLabel, height=100)
     OptionFrame.grid(column=0, row=1, sticky='nsew')
-
-    MainOptionFrame = cm.OptionCanvas(OptionFrame)
+    MainOptionFrame, OptionCanvas = cm.OptionCanvas(OptionFrame)
     OptionGUI(MainOptionFrame)
+
+
 
     POLabel = ttk.Label(WindowFrame, text='Additional parameters:', style='ShortInfo.TLabel')
     ParamOverrideFrame = ttk.Labelframe(WindowFrame, style='TLabelframe', labelwidget=POLabel)
     ParamOverrideFrame.grid(column=0, row=2, sticky='nsew',pady=20)
     ParamOverrideFrame.columnconfigure(index=0, weight=1)
     ParamOverrideFrame.rowconfigure(index=1, weight=1)
-
     Entry = ttk.Entry(ParamOverrideFrame, style='Other.TEntry')
     Entry.config(font=cm.AddFontTraces(Entry))
-
     Entry.grid(column=0,row=1, sticky='nsew', padx=5, pady=5)
+
+
 
     Paramname = ttk.Label(WindowFrame, text="Launch Parameters", style='ShortInfo.TLabel')
     ParamFrame = ttk.Labelframe(WindowFrame, style = 'secondary.TLabelframe', labelwidget=Paramname)
     ParamFrame.grid(column=0, row=3, sticky='nsew')
     ParameterGUI(ParamFrame)
 
+
     CFLabel = ttk.Label(WindowFrame, text='Compile', style='ShortInfo.TLabel')
     CompileFrame = ttk.Labelframe(WindowFrame, style='TLabelframe', labelwidget=CFLabel)
     CompileFrame.grid(column=0, row=4, sticky='nsew')
+    global Compile
+    Compile = cm.CompileWindow(CompileFrame)
 
-    cm.CompileWindow(CompileFrame)
+    CompileOverrideError = tk.StringVar(container, '', "CAPTION-CompileOverride")
 
-    EntryVar.trace_add('write', lambda a, b, c: UpdateParameters())
-    InputString.trace_add('write', lambda a, b, c: UpdateParameters())
-    OutputString.trace_add('write', lambda a, b, c: UpdateParameters())
+    cm.GetGlobal('GameInfo')[1].trace_add('write', lambda a, b, c: UpdateParameters()) 
+    ConfigPath[1].trace_add('write', lambda a, b, c: UpdateParameters())
+    IOString[0].trace_add('write', lambda a, b, c: UpdateParameters())
+    IOString[1].trace_add('write', lambda a, b, c: UpdateParameters())
     OVerbose.trace_add('write', lambda a, b, c: UpdateParameters())
     ODLC_st.trace_add('write', lambda a, b, c: UpdateParameters())
     ODLC_val.trace_add('write', lambda a, b, c: UpdateParameters())
@@ -147,7 +161,7 @@ def OptionGUI(frame: ttk.Frame):
 
     ValidateC = frame.register(ValidateSpinbox)
 
-    DLCSpinbox = ttk.Spinbox(frame, from_=0, to=255, textvariable=ODLC_val, validate='all', validatecommand=(ValidateC, '%P'), style='Option.TSpinbox')
+    DLCSpinbox = ttk.Spinbox(frame, from_=-1, to=99, textvariable=ODLC_val, validate='all', validatecommand=(ValidateC, '%P'), style='Option.TSpinbox')
     DLCSpinbox.grid(column=1, row=2, sticky='w', padx=20)
     ODLC_st.trace_add('write', lambda a, b, c: ChangeEntryState(DLCSpinbox, ODLC_st.get()))
 
@@ -188,89 +202,74 @@ def ParameterGUI(frame):
     frame.bind('<Configure>', lambda e: cm.ResizeWrapLength(label, frame.winfo_width(), max=1200, endmultiplier=1))
     frame.columnconfigure(index=0, weight=1)
     frame.rowconfigure(index=0, weight=1)
-    label.grid(column=0, row=0, sticky='nsew', padx=10)
+    label.grid(column=0, row=0, sticky='nsew', padx=10, pady=10)
     global ParameterGUILabel
     ParameterGUILabel = label
 
 def UpdateParameters():
     '''This is just to display the parameters in the param window'''
-    exe = str(EntryVar.get())
-    game = str(cm.GetGlobal('GameInfo')[1].get())
-    dlc = ''
-    log = ''
+    global CompileOverrideError
+    global LOG_PathName
+
+    B = "   "
+    par_label = ''
+
+    exe = str(ConfigPath[1].get())
+    gameFile = str(cm.GetGlobal('GameInfo')[1].get())
+    par_label += exe + B
+
     
-    completePar = f"{exe}    -g {game}   "
+    game, game_success, CompileOverrideErrorString = cm.CheckGameInfo(gameFile)
+
+    CompileOverrideError.set(CompileOverrideError.get() + '\n' + CompileOverrideErrorString)
+
+    par_label += '-game ' + game + B
 
     if OVerbose.get():
-        completePar += "-v \n"
-
-    if not ODLC_st.get():
-        dlc = str(ODLC_val.get())
-    else:
-        dlc = str(cm.GetHighestDLC())
-    if dlc != '-1':
-        completePar += f"-d {dlc}   "
+        par_label += '-v' + B
 
 
-    if LOG_st.get():
-        head, log = os.path.split(LOG_file.get())
-        completePar += f'-log {log} (And transfer to "{head}")  '
-
-    input = InputString.get()
-
-    if InputMode:
-        completePar += input + "    "
-    else:
-        completePar += f"(Recursively do this for every file in {input})    "
+    if game_success: #If determining game was a success, we can determine the DLC now
+        dlc_st = cm.DetermineDLC(game, ODLC_st.get(), ODLC_val.get())
+        if dlc_st[0]:
+            par_label += '-d ' + dlc_st[1] + B
     
-    outPath = OutputString.get()
 
-    completePar += f"(Transfer file to {outPath})   "
-
-    ParameterGUILabel.configure(text = completePar)
     
- 
-def ChangeExtension(state: str, exten):
-    global extension, InputMode
-    if 'File' in state:
-        extension = exten
-        InputMode = True
-    else:
-        extension = 'folder'
-        InputMode = False
-    print(extension)
+    if LOG_st.get(): # We are wanting to log
+        if cm.CheckPathSyntax(LOG_file.get()):
 
-def SelectorTwo(entry: ttk.Entry, string:tk.StringVar, state: str):
-    global outputstate
-    outputstate = "Default" in state
-    print("Selector two with state " + str(outputstate))
-    if outputstate:
-        print("Something something")
-        gameinfo = cm.GetGlobal('GameInfo')[1].get()
-        head, tail = os.path.split(gameinfo)
-        string.set(head + '/resource')
-        entry.configure(state="disabled")
-    else:
-        entry.configure(state="normal")
-    cm.CheckPathValidity(entry, state='folder')
+            LOG_PathName = cm.SplitPath(LOG_file.get())
+            B_st = False
+            if LOG_PathName[0] != '' or LOG_PathName[1] != '': #Means the field is not empty
+                par_label += '-l'
+                B_st = True
+
+            if LOG_PathName[1] != '':
+                par_label += f' <Rename file to "{LOG_PathName[1]}"> '
+
+            if LOG_PathName[0] != '':
+                par_label += f' <Move file to "{LOG_PathName[0]}">'
+
+            if B_st:
+                par_label += B
+
+    input_st = cm.CheckInputValidity(IOString[0].get(), '.txt', input_mode.get())
+    par_label += input_st[2] + B
+    
+    outPath = IOString[1].get()
+    par_label += f"<Transfer file(s) to {outPath}>" + B
+
+    ParameterGUILabel.configure(text = par_label)
+    
         
- 
+
 def LoadFor(stringVar: tk.StringVar):
     
     cm.SetGlobal('disable_save', True)
-    global current_config
     current_config = stringVar.get()
 
     global ODLC_st, OVerbose, ODLC_val, LOG_file, LOG_st
-
-    ExtensionSelectorOne.set(cm.GetData('cfg', current_config, MODULE_PREFIX+"InputMode"))
-    ExtensionSelectorTwo.set(cm.GetData('cfg', current_config, MODULE_PREFIX+"OutputMode"))
-
-    InputEntryBox.delete(0, tk.END)
-    InputEntryBox.insert(0, cm.GetData('cfg', current_config, MODULE_PREFIX+"Input"))
-
-    OutputEntryBox.delete(0, tk.END)
-    OutputEntryBox.insert(0, cm.GetData('cfg', current_config, MODULE_PREFIX+"Output"))
 
     #App specific loads
     ODLC_st.set(cm.GetData('app', "captioncompile", "auto_dlc"))
@@ -278,11 +277,13 @@ def LoadFor(stringVar: tk.StringVar):
     ODLC_val.set(cm.GetData('app', "captioncompile", "manual_dlc"))
     LOG_st.set(cm.GetData('app', "captioncompile", "log"))
     LOG_file.set(cm.GetData('app', "captioncompile", "log_path"))
-    ChangeExtension(ExtensionSelectorOne.get(), '.txt')
-    print("EXTENSION " + extension)
-    SelectorTwo(OutputEntryBox, OutputString, ExtensionSelectorTwo.get())
 
     cm.SetGlobal('disable_save', False)
+
+    global Loaded
+    if not Loaded:
+        SetupProgram()
+        Loaded = True
 
 
 
@@ -294,7 +295,7 @@ def ChangeEntryState(entry, state):
         entry.config(state='normal')
 
 def ValidateSpinbox(valuew):
-    if valuew == '':
+    if valuew == '' or '-':
         return True
     try:
         value = int(valuew)
@@ -303,9 +304,72 @@ def ValidateSpinbox(valuew):
         return False
     #if valuew != value:
     #    return False
-    if value > 255:
+    if value > 99:
         return False
-    elif value < 0:
+    elif value < -1:
         return False
     else:
         return True
+    
+def SetupProgram():
+    global Compile
+    rootWindow = Compile[0]
+    canvas = Compile[1]
+    compileB = Compile[2]
+    stopB = Compile[3]
+    nextB = Compile[4]
+    clearB = Compile[5]
+
+    TextWid = cm.CompileTextWidget(rootWindow, canvas, scroll=Compile[6])
+    CompilerProgram = cm.Compiler(ConfigPath[1].get(), TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='/resource', source_extensions=['.txt'])
+    TextWid.pack(fill='both', expand=True)
+    compileB.bind("<Button>", lambda e: StartCompile(CompilerProgram))
+    stopB.bind("<Button>", lambda e: CompilerProgram.Stop())
+    clearB.bind("<Button>", lambda e: CompilerProgram.ClearField())
+
+
+
+def StartCompile(Compiler: cm.Compiler):
+    print("Start compile!")
+
+    global CompileOverrideError
+
+    CompileOverrideError.set('')
+    gameFile = str(cm.GetGlobal('GameInfo')[1].get())
+    par = []
+    errored = False
+
+
+    game, game_success, Gerror = cm.CheckGameInfo(gameFile)
+    input_success, i_error, _ = cm.CheckInputValidity(IOString[0].get(), '.txt', input_mode.get())
+
+    if game_success:
+        par.append('-game')
+        par.append(game)
+    else:
+        CompileOverrideError.set(Gerror)
+        errored = True
+    
+    if game_success:
+        dlc_st = cm.DetermineDLC(game, ODLC_st.get(), ODLC_val.get())
+        if dlc_st[0]:
+            par.append('-d')
+            par.append(dlc_st[1])
+
+    if LOG_st.get():
+        par.append('-l')
+
+
+    if input_success: #Must be last!
+        par.append(IOString[0].get())
+    else:
+        CompileOverrideError.set(CompileOverrideError.get() + i_error)
+        errored = True
+
+    if Compile[7].get(): # If the automatic clear is online
+        Compiler.ClearField() # Clear the field before compile
+
+
+    Compiler.Compile(params=par, error=errored, folder=not input_mode.get())
+    #Compiler.Compile(['-game', f'C:/Program Files (x86)/Steam/steamapps/common/Portal 2/portal2/', "-d", "0", "-l", 'C:/Program Files (x86)/Steam/steamapps/common/Portal 2/portal2/resource/for-compile/amongus.txt'], error=errored)
+
