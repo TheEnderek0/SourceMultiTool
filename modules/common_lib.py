@@ -7,10 +7,12 @@ import os
 import shutil
 import logging
 
+import pathlib as pl #I'm are going to replace the os module with this shortly
+
 from threading import Thread, Event
 from queue import Queue, Empty
 from subprocess import Popen, PIPE, STDOUT, TimeoutExpired
-import glob
+
 
 
 jsonData = {}
@@ -123,10 +125,12 @@ def AddConfigPath(name, shownName, extension = '.exe'):
     globals()[name] = (entry, entryString) # Add this field to globals, so we can read and write to it
     AppendGlobal("EntryList", name)
 
-    normalizedString = tk.StringVar(container)
-    entryString.trace_add('write', lambda a, b, c: normalizedString.set(os.path.normpath(entryString.get())))
+    path = pl.Path()
+    globals()[name + "_path"] = path
+
+    entryString.trace_add('write', lambda a, b, c: SetGlobal(name + "_path",    pl.Path(entryString.get()))     )
     
-    return entry, normalizedString
+    return entry, entryString
 
 def AppendButtons(container):
     Select = ttk.Button(container,
@@ -404,7 +408,7 @@ def GetHighestDLC(game):
 
 def CheckPathValidity(entrybox: tk.Entry, state='File', ext='', creatable=False):
     '''Checks if a path is valid, and sets the text colour of the entrybox to green/red accordingly'''
-    path = entrybox.get()
+    path = pl.Path(entrybox.get())
     correction = False
     Head, Tail = SplitPath(path)
     print("EXTENSION IN CHECK PATH VALIDITY IS " + ext)
@@ -413,17 +417,17 @@ def CheckPathValidity(entrybox: tk.Entry, state='File', ext='', creatable=False)
         return
     
     print("Checking path for " + str(entrybox))
-    if 'File' in state and os.path.exists(path):
+    if 'File' in state and path.exists():
         if ext != '':
             print("EXTENSION SET")
-            if ext in Tail:
-                correction = os.path.isfile(path)
+            if ext in str(Tail):
+                correction = path.is_file()
             else:
                 correction = False
         else:
-            correction = os.path.isfile(path)
-    elif os.path.exists(path) and Tail == '':
-        correction = os.path.isdir(path)
+            correction = path.is_file()
+    elif path.exists() and str(Tail) == '':
+        correction = path.is_dir()
 
     if correction:
         entrybox.configure(style='success.TEntry')
@@ -444,13 +448,17 @@ def SelectorTwo(entry: ttk.Entry, string:tk.StringVar, state: str, rel_path:str,
     '''Changes the path of default game directory and user path. Should only be used internally.'''
     outputstate.set("Default" in state)
     if outputstate.get():
-        gameinfo = GetGlobal('GameInfo')[1].get()
-        head, tail = SplitPath(gameinfo)
+        gameinfo = GetGlobal('game_path')
+        print("SELE======GAMEINFO IS" + str(gameinfo))
+        head = SplitPath(gameinfo)[0]
         entry.configure(state="disabled")
         if not head:
             string.set("<GAMEINFO_PATH_ERROR>")
         else:
-            string.set(os.path.normpath(head + rel_path))
+            print("HEAD IS " + str(head))
+            print("RELPATH " + str(rel_path))
+            print(str(head.joinpath(rel_path)))
+            string.set(str(head.joinpath(rel_path)))
         CheckPathValidity(entry, 'folder', creatable=True) # This fires before this function, so we need to also check this again
     else:
         entry.configure(state="normal")
@@ -465,7 +473,7 @@ def ChangeExtension(state: str, extension: tk.StringVar, arg_ext: str, mode: tk.
         extension.set('folder')
         mode.set(False)
 
-def CheckPathValidityBOOL(pathw, ext=''):
+def CheckPathValidityBOOL(pathw: pl.Path, ext=''):
     '''Checks validity of path and returns several booleans:\n
         Bool (1) - Directory exists
         Tuple(Bool, Bool) - (File exists, File was typed in)
@@ -481,15 +489,15 @@ def CheckPathValidityBOOL(pathw, ext=''):
                 return False, (False, False), False
         
 
-    if Tail == '':
-        return os.path.isdir(Head), (False, False), False
+    if str(Tail) == '':
+        return Head.is_dir(), (False, False), False
     else:
         if ext != '':
-            return os.path.isdir(Head), (os.path.isfile(pathw), True), ext in Tail
+            return Head.is_dir(), (pathw.is_file(), True), ext in Tail
         else:    
-            return os.path.isdir(Head), (os.path.isfile(pathw), True), True
+            return Head.is_dir(), (pathw.is_file(), True), True
 
-def CheckGameInfo(gfPath: str):
+def CheckGameInfo(gfPath: pl.Path):
     '''Given a path, checks if gameinfo exists and gives an appropriate error.\n
         No file: game = "<FILE_ERROR>", CompileOverrideError = "Cannot locate gameinfo.txt ..."\n
         Wrong path: game = "<PATH_ERROR>", CompileOverrideError = "Path is incorrect..."\n
@@ -512,7 +520,7 @@ def CheckGameInfo(gfPath: str):
         game = "<PATH_ERROR>"
     return game, game_success, CompileOverrideError
 
-def DetermineDLC(game: str, is_automatic: bool, manual_val: int):
+def DetermineDLC(game: pl.Path, is_automatic: bool, manual_val: int):
     '''
     Determines the DLC level for current configuration.
     Returns a tuple of boolean and the dlc
@@ -530,48 +538,18 @@ def DetermineDLC(game: str, is_automatic: bool, manual_val: int):
         return True, dlc
     else:
         return False, dlc #DLC is not required, this game does not have dlc
-    
-def CheckPathSyntax(path):
-    dirname = os.path.dirname(path)
-    return os.access(dirname, os.X_OK)
 
-def SplitPath(path): # A better version of os.path.split()
+def SplitPath(path: pl.Path): # A better version of os.path.split()
     '''Slices the path into directory and filename, if there is no file specified, filename is empty
     Can return False, False when the filepath is wrong!'''
-    if not CheckPathSyntax(path):
-        return False, False
-    
-    path = os.path.normpath(path) # Normalize the path
-
-    c_index = 0 # Last index of the array
-    last_slash = 0
-    dot_index = 0
-    slashmode = False # False = / | True = \
-
-    for letter_i in range(len(path)):
-        letter = path[letter_i]
-        c_index = letter_i
-
-        if letter == '.':
-            dot_index = letter_i
-            break
-        elif letter == '/':
-            slashmode = False
-            last_slash = letter_i
-        elif letter == '\\':
-            slashmode = True # Slash mode should technically be set once
-            last_slash = letter_i
-    # We determined the important things, and where they are located in the string.
-
-    if c_index >= dot_index and dot_index != 0: # Normal file path with the dot as an extension
-        Head = path[:last_slash]
-        Tail = path[last_slash+1:]
-        return Head, Tail
-    elif dot_index == 0: # No dot was detected, path has no file specified
-        #if last_slash < c_index: # Incomplete path, like C:/folder, it seems everything works fine without that additional slash
+    print("========SLICING path for " + str(path))
+    name = path.name
+    if '.' in name: # Path leads to a file
+        print(f"==== {path.parent}  === {name}" )
+        return path.parent, name
+    else:
+        print(f"==== {path}" )
         return path, ''
-            
-    return False, False
             
 def CheckInputValidity(path, ext, mode):
     '''Checks if input path is valid, returns 3 values in a tuple:\n
@@ -660,10 +638,10 @@ class CompileTextWidget(ttk.Label):
             self.after(self.update_interval, self.update_lines)
 
 class Compiler():
-    def __init__(self, cmd:str, TextWidget: CompileTextWidget, ErrorOverride: tk.StringVar, file_ext = '', game_relative_path=None, source_extensions:list = []):
+    def __init__(self, cmd:str, TextWidget: CompileTextWidget, ErrorOverride: tk.StringVar, file_ext = '', game_relative_path:str=None, source_extensions:list = []):
         '''
         Defines a program to compile files.
-        cmd - excectuable to use
+        cmd - name of the tool, the program will retrieve the path automatically
         TextWidget - a textwidget to show the compile data, class of cm.CompileTextWidget
         ErrorOverride - Error override message (tk.StringVar)
         file_ext - input file extension
@@ -677,7 +655,7 @@ class Compiler():
         self.extension = file_ext
 
         self.Pr_transfer = game_relative_path # Transfer this to the program object
-        self.Pr_game = GetGlobal("GameInfo")[0]
+        self.Pr_game = GetGlobal("game_path")
         self.Pr_source_extensions = source_extensions
 
     def ChangeProgramPath(self, path):
@@ -701,13 +679,13 @@ class Compiler():
             return
         if folder:
             print("Compiling folder!")
-            folder_path = params.pop()
-            file_list = glob.glob(folder_path + '/**/*' + self.extension, recursive=True)
-            self.program = Program(self.program_path, self.queue, self.Pr_game, self.widget.stop, params, folder_mode=True, files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
+            folder_path = pl.Path(params.pop())
+            file_list = folder_path.rglob('/*' + self.extension)
+            self.program = Program(GetPathForTool(self.program_path), self.queue, self.Pr_game, self.widget.stop, params, folder_mode=True, files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
             
         else:
-            file = [params.pop()]
-            self.program = Program(self.program_path, self.queue, self.Pr_game, self.widget.stop, params, files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
+            file = [    pl.Path(params.pop())   ]
+            self.program = Program(GetPathForTool(self.program_path), self.queue, self.Pr_game, self.widget.stop, params, files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
 
         self.program.start() # Start the thread
     
@@ -717,8 +695,9 @@ class Compiler():
             self.program.stop()
 
 class Program(Thread):
-    def __init__(self, cmd, queue, game: tk.StringVar, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:str=None, source_extensions=[]):
+    def __init__(self, cmd, queue, game: pl.Path, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:pl.Path=None, source_extensions=[]):
         super().__init__(group=None, name=None, daemon=True)
+
         self.terminate = terminate_event
         self.queue = queue
 
@@ -728,23 +707,41 @@ class Program(Thread):
         self.extensions = source_extensions
 
         # Folder specific logic
-        self.folder_mode = folder_mode
-        self.files:list = files
-        self.cmd = cmd
-        self.param = param
-        self.game = SplitPath(game.get())[0]
+        self.folder_mode = folder_mode # Are we compiling a folder?
+        self.files:list = files # List of files
+        self.cmd = cmd # The executable to run
+        self.param = param # Paramaters to run with
+        self.game = game # Game directory
 
-        self.rel_path = gm_rel_path
-        self.move_path = None # If set, move files here before compiling and reference them via rel_path
+        self.rel_path = gm_rel_path # Set the non-proper one, the proper one is set below
 
         self.forceTerminate = Event() # Forces the program to quit with no removing files from the queue
 
-        if gm_rel_path: # It means we have to move the file into a temporary folder in the relative path
-            if os.path.isdir(self.game):
-                path = os.path.normpath(self.game + "/" + self.rel_path + "/" + "smt_temp")
-                if not os.path.isdir(path):
-                    os.mkdir(path)
-                self.move_path = path
+        if self.rel_path: # It means we are dealing with a program that does not like absolute filepaths (not relative to the GAME directory)
+            if self.game.is_dir():
+                
+                self.rel_path = self.game.joinpath(self.rel_path) # Set the proper relative path
+
+                drive = self.game.drive
+                dest = self.game.joinpath(self.rel_path, 'temp_smt_symlinks')
+                tempfiles = []
+
+                for file in self.files:
+                    if file.drive != drive:
+                        this_path = dest.joinpath(file.name) # for creating the symlink, name it as the file
+                        this_path.symlink_to(file) # Create the symlink
+                        file = this_path
+                    try:
+                        file = file.relative_to(self.rel_path) # Return the relative path to the game dir
+                    except ValueError: # Paths are not relative, we have to use the legacy os module method that actually does /../
+                        filepath = str(file)
+                        rel_path = str(self.rel_path)
+                        file = pl.Path(os.path.relpath(file, rel_path))
+
+                    tempfiles.append(file)
+                    
+                self.files = tempfiles
+
             else:
                 self.queue.put("\nThe path for gameinfo.txt is incorrect! \nMake sure you enter the correct path in the configuration tab before proceeding!")
                 self.forceTerminate.set()
@@ -816,37 +813,22 @@ class Program(Thread):
         
 
     def CompileNextFile(self):
-        if self.need_to_move_file.is_set(): # If we processed a file before, move the file
+        if self.need_to_move_file.is_set() and False: # If we processed a file before, move the file
             self.MoveFile()
             self.need_to_move_file.clear()
 
         try:
-            file = self.files.pop(0)
+            file:pl.Path = self.files.pop(0)
         except IndexError: # No files left to process
             return False 
         
-        if self.move_path: # We need to do a bit of trickery
-            print("========CopyingFile!")
-            self.file_original_path, self.filename_ext = SplitPath(file) # Save the original directory, to later transfer the compiled file
-            self.copied_file = os.path.normpath(self.move_path + '/') # Saved the copied file dir
-            self.filename, _ = os.path.splitext(self.filename_ext)
-            
-            new_file = os.path.normpath(self.move_path + '/' + self.filename_ext)
-            print("Copying temp file! ")
-            print(file)
-            print(new_file)
-            shutil.copyfile(file, new_file) # Copy the file
-            self.need_to_move_file.set()
-            
-            file = os.path.relpath(new_file, os.path.normpath(self.game + "/" + self.rel_path)) # Return path relative to game directory with the relative path
-            print("Relative path to file " + file)
 
+        file = file.as_posix() # Convert the path to string
 
-        file = file.replace('\\', '/') # For some reason CaptionCompiler (and probably other tools doesn't) like backslashes, so its safe to change that to forwardslashes
         print("PATH FILE AMOGUS " + file)
         self.queue.put(f'[ {file} ]\n\n')
-        print("Running compiler " + str([self.cmd] + self.param + [file]))
-        self.process =  Popen([self.cmd] + self.param + [file], # Compile the first file
+        print("Running compiler " + str([str(self.cmd)] + self.param + [file]))
+        self.process =  Popen([str(self.cmd)] + self.param + [file], # Compile the first file
                                  stdout=PIPE,
                                  stderr=STDOUT,
                                  universal_newlines=True)
@@ -1062,3 +1044,5 @@ def SaveForAPP(tab: str, name: str, value):
     print(f"Saving app for {name}")
     SaveData("app", tab, name, value)
 
+def GetPathForTool(tool:str):
+    return globals()[tool + "_path"]

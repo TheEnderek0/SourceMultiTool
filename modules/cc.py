@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 from . import common_lib as cm
-import os
+import pathlib as pl
 
 MODULE_PREFIX = 'CaptionCompile-'
+TOOL_NAME = 'captioncompiler'
 
 ConfigPath = (None, None)
 
@@ -62,13 +63,13 @@ def Init(container):
     PathFrame.grid(column=0, row=0, sticky='nsew')
 
     # Add a config bar for captioncompiler
-    ConfigPath = cm.AddConfigPath('captioncompiler', "Caption Compiler")
+    ConfigPath = cm.AddConfigPath(TOOL_NAME, "Caption Compiler")
     
     # Add IO bars
     input_mode = tk.BooleanVar(PathFrame, False)
     output_mode = tk.BooleanVar(PathFrame, False)
 
-    IOString = cm.IObars(PathFrame, input_mode, output_mode, '/resource', MODULE_PREFIX, InputCallback=[UpdateParameters]) # Create standard IO input output bars
+    IOString = cm.IObars(PathFrame, input_mode, output_mode, 'resource', MODULE_PREFIX, InputCallback=[UpdateParameters]) # Create standard IO input output bars
     
 
     cm.GetGlobal('configuration').trace_add('write', lambda a, b, c: LoadFor(cm.GetGlobal('configuration')))
@@ -208,13 +209,14 @@ def ParameterGUI(frame):
 
 def UpdateParameters():
     '''This is just to display the parameters in the param window'''
+    return # This will be done in the class itself
     global CompileOverrideError
     global LOG_PathName
 
     B = "   "
     par_label = ''
 
-    exe = str(ConfigPath[1].get())
+    exe = str(ConfigPath[2])
     gameFile = str(cm.GetGlobal('GameInfo')[1].get())
     par_label += exe + B
 
@@ -321,7 +323,7 @@ def SetupProgram():
     clearB = Compile[5]
 
     TextWid = cm.CompileTextWidget(rootWindow, canvas, scroll=Compile[6])
-    CompilerProgram = cm.Compiler(ConfigPath[1].get(), TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='/resource', source_extensions=['.txt'])
+    CompilerProgram = cm.Compiler(TOOL_NAME, TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='resource', source_extensions=['.txt'])
     TextWid.pack(fill='both', expand=True)
     compileB.bind("<Button>", lambda e: StartCompile(CompilerProgram))
     stopB.bind("<Button>", lambda e: CompilerProgram.Stop())
@@ -335,13 +337,13 @@ def StartCompile(Compiler: cm.Compiler):
     global CompileOverrideError
 
     CompileOverrideError.set('')
-    gameFile = str(cm.GetGlobal('GameInfo')[1].get())
+    gameFile = cm.GetGlobal("game_path")
     par = []
     errored = False
 
 
     game, game_success, Gerror = cm.CheckGameInfo(gameFile)
-    input_success, i_error, _ = cm.CheckInputValidity(IOString[0].get(), '.txt', input_mode.get())
+    input_success, i_error, _ = cm.CheckInputValidity(pl.Path(IOString[0].get()), '.txt', input_mode.get())
 
     if game_success:
         par.append('-game')

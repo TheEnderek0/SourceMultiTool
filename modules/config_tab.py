@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 from . import common_lib as cm
-import os
+import pathlib as pl
+
 
 PATH_INFO_TEXT = "Path setup:"
 
@@ -160,6 +161,8 @@ def PathSelect(container):
     gameinfoBox.grid(column=1, row=1, sticky='ew')
     gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File', ext='.txt'))
 
+    gameinfoString.trace_add('write', lambda a, b, c: cm.SetGlobal("game_path",    cm.SplitPath(pl.Path(gameinfoString.get()))[0]     )) # Save the path
+
     nameString.trace_add("write", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
     gameinfoString.trace_add("write", lambda a, b, c: cm.SaveForCFG("GameInfo", gameinfoString))
 
@@ -300,7 +303,6 @@ def DeleteConfig():
         index = len(configs)
     cm.GetGlobal("ConfigDropdown").set(configs[index])
     cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
-    
     
 
 
