@@ -1,0 +1,18 @@
+infile[ resource\for-compile\amongus.txt ]
+    Outputting to log.txt
+outfile[ C:\Program Files (x86)\Steam\steamapps\common\Portal 2\portal2\resource\c:\program files (x86)\steam\steamapps\common\portal 2\portal2\resource\for-compile\amongus.dat ]
+Valve Software - captioncompiler.exe (Nov 14 2021)
+--- Close Caption File compiler ---
+gamedir[ C:\Program Files (x86)\Steam\steamapps\common\Portal 2\portal2\ ]
+infile[ resource\for-compile\closecaption_brazilian.txt ]
+outfile[ C:\Program Files (x86)\Steam\steamapps\common\Portal 2\portal2\resource\c:\program files (x86)\steam\steamapps\common\portal 2\portal2\resource\for-compile\closecaption_brazilian.dat ]
+    Compiling Captions for 'resource\for-compile\amongus.txt'...
+Found 1 strings in 'resource\for-compile\amongus.txt'
+Longest string 'Portal.room1_TickTock' = (24) bytes average(8192.000)
+1 blocks (8192 bytes each), 8168 bytes wasted (8168.000 per block average), total bytes 8192
+directory size 1 entries, 12 bytes, data size 8192 bytes
+    Compiling Captions for 'resource\for-compile\closecaption_brazilian.txt'...
+Found 266 strings in 'resource\for-compile\closecaption_brazilian.txt'
+Longest string 'World.a2RicochetSweepingArmsLinear' = (146) bytes average(92.391)
+3 blocks (8192 bytes each), 5066 bytes wasted (1688.667 per block average), total bytes 24576
+directory size 266 entries, 3192 bytes, data size 24576 bytes

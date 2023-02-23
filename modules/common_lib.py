@@ -13,7 +13,7 @@ from threading import Thread, Event
 from queue import Queue, Empty
 from subprocess import Popen, PIPE, STDOUT, TimeoutExpired
 
-
+from time import sleep
 
 jsonData = {}
 savePath = ''
@@ -22,9 +22,26 @@ configuration = None # A tk.StringVar used to store the current config
 
 default_settings = {} # Dictionary storing default settings, these are appended by modules on startup
 
+load_functions = [] # List of functions, that are called when the app interface is done loading, and we need to load the "APP" block from the settings
+
 def Init(a):
     global configuration
     configuration = tk.StringVar(a) # A string used to store the current config
+
+
+def AppendLoading(func):
+    global load_functions
+    load_functions.append(func)
+
+def LOAD():
+    global load_functions
+
+    SetGlobal('disable_save', True) # Disable saving for when we load
+
+    for function in load_functions:
+        function()
+
+    SetGlobal('disable_save', False)
 
 
 
@@ -184,7 +201,7 @@ def ModuleWindow(container):
                             orient='horizontal',
                             mode='determinate',
                             length=280,
-                            value=75
+                            value=0
                             
                            )
     Bar.grid(column = 0, row = 0, sticky='ew', padx=10, pady=(0, 5))
@@ -346,13 +363,28 @@ def GoToAdv(path, state):
     else:
         Goto(path, select = False)
 
-def CompileWindow(frame: ttk.Frame):
-    MainCompileFrame, canvas = OptionCanvas(frame)
+def CompileWindow(frame: ttk.Frame, toolname):
 
+    frame.columnconfigure(index=0, weight=1)
+    frame.columnconfigure(index=1, weight=0)
+    MainCompileFrame = ttk.Frame(frame)
+
+    frame.rowconfigure(index=0, weight=1)
     frame.rowconfigure(index=1, weight=0)
+    frame.rowconfigure(index=2, weight=0)
+
+    MainCompileFrame.grid(row=0, column=0, sticky='nsew')
+
+
+    yscrollbar = ttk.Scrollbar(frame, orient='vertical')
+    yscrollbar.grid(column=1, row=0, sticky='ns', padx=(0, 5), pady=(0, 0))
+
+    xscrollbar = ttk.Scrollbar(frame, orient='horizontal')
+    xscrollbar.grid(column=0, row=1, sticky='ew', padx=(0, 0), pady=(0, 5))
+
     ButtonFrame = ttk.Frame(frame)
 
-    ButtonFrame.grid(column=0, columnspan=2, row=1, sticky='ew')
+    ButtonFrame.grid(column=0, columnspan=2, row=2, sticky='ew')
     ButtonFrame.columnconfigure(index=0, weight=1)
     ButtonFrame.columnconfigure(index=1, weight=1)
     ButtonFrame.columnconfigure(index=2, weight=1)
@@ -371,6 +403,7 @@ def CompileWindow(frame: ttk.Frame):
     BC = ttk.Checkbutton(ButtonFrame, style='Option.info.Outline.Toolbutton', text='Automatic Clear', onvalue=True, offvalue=False, variable=ClearOnCompile)
     Scroll = ttk.Checkbutton(ButtonFrame, style='Option.info.Outline.Toolbutton', text='Automatic Scroll', onvalue=True, offvalue=False, variable=ScrollBool)
 
+
     BCompile.grid(column=0, row=1, sticky='nsew', padx=10, pady=(0, 5))
     BStop.grid(column=1, row=1, sticky='nsew', padx=10, pady=(0, 5))
     BNext.grid(column=2, row=1, sticky='nsew', padx=10, pady=(0, 5))
@@ -378,7 +411,32 @@ def CompileWindow(frame: ttk.Frame):
     BC.grid(column=4, row=1, sticky='nsew', padx=10, pady=(0, 5))
     Scroll.grid(column=5, row=1, sticky='nsew', padx=10, pady=(0, 5))
 
-    return MainCompileFrame, canvas, BCompile, BStop, BNext, BClear, ScrollBool, ClearOnCompile
+
+    ScrollBool.trace_add('write', lambda a, b, c: SaveData('app', toolname, 'auto_scroll', ScrollBool.get()))
+    ClearOnCompile.trace_add('write', lambda a, b, c: SaveData('app', toolname, 'auto_clear', ClearOnCompile.get()))
+
+    AppendLoading(  lambda: ClearOnCompile.set(GetData('app', toolname, 'auto_clear'))    )
+    AppendLoading(  lambda: ScrollBool.set(GetData('app', toolname, 'auto_scroll'))     )
+
+    return MainCompileFrame, BCompile, BStop, BNext, BClear, ScrollBool, ClearOnCompile, (yscrollbar, xscrollbar)
+
+def AdditionalParameters(frame: ttk.Frame, column_, row_, toolname):
+
+    textvar = tk.StringVar(frame)
+
+    POLabel = ttk.Label(frame, text='Additional parameters:', style='ShortInfo.TLabel')
+    ParamOverrideFrame = ttk.Labelframe(frame, style='TLabelframe', labelwidget=POLabel)
+    ParamOverrideFrame.grid(column=column_, row=row_, sticky='nsew',pady=20)
+    ParamOverrideFrame.columnconfigure(index=0, weight=1)
+    ParamOverrideFrame.rowconfigure(index=1, weight=1)
+    Entry = ttk.Entry(ParamOverrideFrame, style='Other.TEntry', textvariable=textvar)
+    Entry.config(font=AddFontTraces(Entry))
+    Entry.grid(column=0,row=1, sticky='nsew', padx=5, pady=5)
+
+    textvar.trace_add('write', lambda a, b, c: SaveData('app', toolname, 'additional_params', textvar.get()))
+    AppendLoading( lambda: textvar.set(     GetData('app', toolname, 'additional_params')       ) )
+
+    return textvar
 
 # MISC
 def SetPath(field: ttk.Entry, filetype: str):
@@ -542,13 +600,10 @@ def DetermineDLC(game: pl.Path, is_automatic: bool, manual_val: int):
 def SplitPath(path: pl.Path): # A better version of os.path.split()
     '''Slices the path into directory and filename, if there is no file specified, filename is empty
     Can return False, False when the filepath is wrong!'''
-    print("========SLICING path for " + str(path))
     name = path.name
     if '.' in name: # Path leads to a file
-        print(f"==== {path.parent}  === {name}" )
         return path.parent, name
     else:
-        print(f"==== {path}" )
         return path, ''
             
 def CheckInputValidity(path, ext, mode):
@@ -588,8 +643,8 @@ def CheckInputValidity(path, ext, mode):
 
 # Processes
 
-class CompileTextWidget(ttk.Label):
-    def __init__(self, window, canvas: tk.Canvas, progressbar: ttk.Progressbar = None, scroll: tk.BooleanVar = None,files: int = 1, update_interval_ms = 50, max_lines=25):
+class CompileTextWidget(tk.Text):
+    def __init__(self, window, yscrollbar:ttk.Scrollbar, xscrollbar:ttk.Scrollbar = None, progressbar: ttk.Progressbar = None, scroll: tk.BooleanVar = None,files: int = 1, update_interval_ms = 50, max_lines=25):
         '''Text widget that gets the program output:\n
             window - Parent of this widget. \n
             canvas - The widget must be in a scrollable canvas, this makes it automatically scroll down when new lines are appended. \n
@@ -601,9 +656,17 @@ class CompileTextWidget(ttk.Label):
             \n
             To stop the updating set <thisobj>.stop = True. You should fire stop to the Program instead, as it also stops this widget.\n
         '''
-        self.textvar = tk.StringVar(window)
-        super().__init__(window, style='Compile.TLabel', justify='left', textvariable=self.textvar)
+
+        font, fsize = GetGlobal("compile_font")
+
+        super().__init__(window, yscrollcommand=yscrollbar.set, xscrollcommand=xscrollbar.set, font= (font.get(), fsize.get()), wrap=tk.NONE  )
+        self.config(state='disabled')
+        yscrollbar.config(command = self.yview)
+        xscrollbar.config(command = self.xview)
+
+        self.ProgressBarActive = False
         self.queue = Queue()
+        
         self.update_interval = update_interval_ms
         self.maxlines = max_lines
         self.stop = Event()
@@ -611,31 +674,66 @@ class CompileTextWidget(ttk.Label):
             self.Scroll = tk.BooleanVar(window, True) # A variable determining if we should stop scrolling
         else:
             self.Scroll = scroll
-        self.canvas = canvas
         self.progressbar = progressbar
+        self.progresscount = tk.IntVar(window, 0) # We don't need to use thread safe solutions, since we are only reading here, no modifications are done
+        self.filecount = 0 # ^^^
+
 
     def update_lines(self):
+        print("Update lines called!")
         insertion = False # Used for scrolling
         for _ in range(self.maxlines):
             try:
                 line = self.queue.get(block=False)
-                print("LINE is " + line)
+                #print("LINE is " + line)
             except Empty:
                 #print("Line is empty!")
                 break
-
-            self.textvar.set(self.textvar.get() + line)
+            
+            self.config(state='normal')
+            self.insert(tk.END, line)
+            self.config(state='disabled')
+            #self.config(scrollregion=self.bbox("all"))
             self.queue.task_done()
             insertion = True
+
+        print("[p[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]")
+        print(self.progresscount.get())
+        self.ClearProgressBar()
+        self.UpdateProgressBar()
         
         if insertion and self.Scroll.get():
             print("Scrolling!")
-            self.canvas.after(5, lambda: self.canvas.yview_moveto(1)) # Scroll to the end
+            self.after(5, lambda: self.yview_moveto(1)) # Scroll to the end
 
         if self.stop.isSet() and self.queue.qsize() == 0:
+            self.ProgressBarActive = False # Reset the progress bar so it clears on the next compile
             return
         else:
             self.after(self.update_interval, self.update_lines)
+    
+    def ClearProgressBar(self):
+        if not self.ProgressBarActive and self.progressbar:
+            self.ProgressBarActive = True
+
+            self.progressbar.config(maximum=1)
+            self.progressbar.config(value=0)
+    
+    def UpdateProgressBar(self):
+
+        if self.ProgressBarActive and self.progressbar:
+            self.progressbar.config(maximum=self.filecount)
+            if self.progresscount.get() >= self.filecount: # Normal
+                self.progressbar.config(value=self.progresscount.get())
+
+
+            
+
+
+            
+
+
+
 
 class Compiler():
     def __init__(self, cmd:str, TextWidget: CompileTextWidget, ErrorOverride: tk.StringVar, file_ext = '', game_relative_path:str=None, source_extensions:list = []):
@@ -664,9 +762,11 @@ class Compiler():
 
     def ClearField(self):
         '''Clear the compile window'''
-        self.widget.textvar.set('')
+        self.widget.config(state='normal')
+        self.widget.delete(1.0, tk.END)
+        self.widget.config(state='disabled')
 
-    def Compile(self, params:list=[], error=False, folder=False):
+    def Compile(self, inputpath: pl.Path, outputpath: pl.Path, params:list=[], error=False, folder=False):
         print("Compiling!")
         self.widget.stop.clear()
         self.widget.update_lines()
@@ -679,13 +779,21 @@ class Compiler():
             return
         if folder:
             print("Compiling folder!")
-            folder_path = pl.Path(params.pop())
-            file_list = folder_path.rglob('/*' + self.extension)
-            self.program = Program(GetPathForTool(self.program_path), self.queue, self.Pr_game, self.widget.stop, params, folder_mode=True, files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
+            folder_path = inputpath
+            print(folder_path)
+            print(self.extension)
+            file_list = folder_path.rglob('*' + self.extension)
+            file_list = list(file_list)
+            print(file_list)
+            self.filecount = len(file_list) # Set the file count for the progressbar
+            self.program = Program(GetPathForTool(self.program_path), self.queue, inputpath, outputpath, self.Pr_game, self.widget.stop, params, folder_mode=True, 
+                                   files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount)
             
         else:
-            file = [    pl.Path(params.pop())   ]
-            self.program = Program(GetPathForTool(self.program_path), self.queue, self.Pr_game, self.widget.stop, params, files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions)
+            file = [    inputpath  ]
+            self.widget.filecount = 1
+            self.program = Program(GetPathForTool(self.program_path), self.queue, inputpath, outputpath, self.Pr_game, self.widget.stop, params, 
+                                   files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount)
 
         self.program.start() # Start the thread
     
@@ -695,7 +803,7 @@ class Compiler():
             self.program.stop()
 
 class Program(Thread):
-    def __init__(self, cmd, queue, game: pl.Path, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:pl.Path=None, source_extensions=[]):
+    def __init__(self, cmd, queue, inputpath: pl.Path, outputpath: pl.Path, game: pl.Path, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:pl.Path=None, source_extensions=[], file_counter:tk.IntVar=None):
         super().__init__(group=None, name=None, daemon=True)
 
         self.terminate = terminate_event
@@ -713,9 +821,14 @@ class Program(Thread):
         self.param = param # Paramaters to run with
         self.game = game # Game directory
 
+        self.inputpath = inputpath
+        self.outputpath = outputpath
+
         self.rel_path = gm_rel_path # Set the non-proper one, the proper one is set below
 
         self.forceTerminate = Event() # Forces the program to quit with no removing files from the queue
+        self.Counter = file_counter
+
 
         if self.rel_path: # It means we are dealing with a program that does not like absolute filepaths (not relative to the GAME directory)
             if self.game.is_dir():
@@ -725,8 +838,10 @@ class Program(Thread):
                 drive = self.game.drive
                 dest = self.game.joinpath(self.rel_path, 'temp_smt_symlinks')
                 tempfiles = []
-
+                
+            
                 for file in self.files:
+                    
                     if file.drive != drive:
                         this_path = dest.joinpath(file.name) # for creating the symlink, name it as the file
                         this_path.symlink_to(file) # Create the symlink
@@ -736,11 +851,11 @@ class Program(Thread):
                     except ValueError: # Paths are not relative, we have to use the legacy os module method that actually does /../
                         filepath = str(file)
                         rel_path = str(self.rel_path)
-                        file = pl.Path(os.path.relpath(file, rel_path))
+                        file = pl.Path(os.path.relpath(filepath, rel_path))
 
                     tempfiles.append(file)
                     
-                self.files = tempfiles
+                self.relative_files = tempfiles
 
             else:
                 self.queue.put("\nThe path for gameinfo.txt is incorrect! \nMake sure you enter the correct path in the configuration tab before proceeding!")
@@ -751,7 +866,7 @@ class Program(Thread):
         print("Starting to transfer lines!")
         if self.process: # Check if we started the process, for folder compiling
             for line in self.process.stdout:
-                print(line)
+                #print(line)
                 if self.forceTerminate.is_set():
                     self.InternalDisable()
                     return
@@ -764,6 +879,9 @@ class Program(Thread):
                 self.queue.put(line) # put the line in queue for processing
 
             self.queue.put('\n[==========NEXT PROCESS==========]\n')
+
+        self.AddToCounter()
+
         
         # give process a chance to exit gracefully
         print("Stopping!")
@@ -772,6 +890,7 @@ class Program(Thread):
         #    self.InternalDisable()
 
         #else:
+        self.need_to_move_file.set() # We ended this compile, we need to move it now
         if self.CompileNextFile(): # Ended this file, compile next one. If we are starting it will automatically default to this one
             print("Running!")
             self.run() # TO CHECK
@@ -781,25 +900,41 @@ class Program(Thread):
         print("Shutting down!")
         return 
     
+    def AddToCounter(self):
+        if self.Counter:
+            if self.process:
+                c = self.Counter.get()
+                self.Counter.set(c+1)
+            else:
+                self.Counter.set(0) # Fresh start, clear the progressbar
+
+
     def MoveFile(self):
-        if self.move_path:
-            print("Moving files!")
-            files = FindFilesByExtension(self.move_path, filter=self.extensions, filename=self.filename)
-            #files = glob.glob(self.move_path + f'/{self.filename}.*') # Find the file
-            #file = file.pop() # Get the file from the list
-            print(files)
-            for file in files:
-                _, new_file = SplitPath(file)
+        print("+++++++++++++++++MOVING FILES!")
+        org_files = self.files.copy()
+        
+        IHead, _ = SplitPath(self.inputpath)
 
-                old_file = os.path.normpath(self.copied_file + "/" + self.filename_ext)
-                new_file = os.path.normpath(self.file_original_path + "/" + new_file)
+        for org_file in org_files:
+            print(org_file)
+            or_path, or_name = SplitPath(org_file)
+            or_name = pl.Path(or_name).stem
 
-                print("Copying compiled file!")
-                print(old_file)
-                print(new_file)
+            input_rel_path = or_path.relative_to(IHead) # Get the relative path from the inputpath (in file mode it will be the same)
 
-                shutil.copyfile(old_file, new_file)
-                print("Moving compiled file! " + file)
+            output_path_r = self.outputpath.joinpath(input_rel_path) # Add the relative input path onto the output path
+            
+            output_path_r.mkdir(parents=True, exist_ok=True) # Create the dir if it wasn't created
+
+            print(f"+++++++{output_path_r}")
+            compiled_files = FindFilesByExtension(or_path, self.extensions, filename=or_name) # Find the compiled files if there are multiple
+            for file in compiled_files:
+                _, newname = SplitPath(file)
+
+                out_path = output_path_r.joinpath(newname)
+
+                shutil.move(file, out_path)
+        
 
     def InternalDisable(self):
         self.terminate.set()
@@ -813,16 +948,15 @@ class Program(Thread):
         
 
     def CompileNextFile(self):
-        if self.need_to_move_file.is_set() and False: # If we processed a file before, move the file
+        if self.need_to_move_file.is_set(): # If we processed a file before, move the file
             self.MoveFile()
             self.need_to_move_file.clear()
 
         try:
-            file:pl.Path = self.files.pop(0)
+            file:pl.Path = self.relative_files.pop(0)
         except IndexError: # No files left to process
             return False 
         
-
         file = file.as_posix() # Convert the path to string
 
         print("PATH FILE AMOGUS " + file)
@@ -837,7 +971,6 @@ class Program(Thread):
 
     def Stop(self):
         '''Stop the process and stop the line appending in the text widget.'''
-        '''Force forces the process to basically "crash".'''
         
         print("Stopping by user input!")
         self.terminate.set() # If this was called by run this process is already done
@@ -853,7 +986,7 @@ class Program(Thread):
         self.terminate.set() # This will force the program to terminate current process, and initiate the next file
 
 
-def FindFilesByExtension(directory:str, filter:list=[], mode:bool=False, recursive_=True, filename:str = ''):
+def FindFilesByExtension(directory:pl.Path, filter:list=[], mode:bool=False, filename:str = ''):
     '''\
         Finds files with the same name, but different extensions
         mode - False -> Blacklist, True -> Whitelist
@@ -862,10 +995,10 @@ def FindFilesByExtension(directory:str, filter:list=[], mode:bool=False, recursi
 
     if mode:
         for ext in filter:
-            files.extend( glob.glob(   os.path.normpath(directory + f"/**/{filename}{ext}"),    recursive=recursive_) )
+            files.extend(directory.rglob(filename + ext))
             
     else:
-        found_f = glob.glob(  os.path.normpath(directory + f"/**/{filename}.*"), recursive=recursive_)
+        found_f = directory.rglob(filename + ".*")
         for file in found_f:
             _, ext = os.path.splitext(file) # Get the extension
             if not ext in filter:
@@ -897,6 +1030,7 @@ def SaveData(type, entry, slot, value):
     print("Saving data!")
     global jsonData
     if globals()['disable_save']:
+        print("Tried to save but disable save is online!")
         return
 
     try:#Data exists, modify

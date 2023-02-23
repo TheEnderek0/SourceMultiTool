@@ -55,6 +55,9 @@ def main():
 
     config_tab.Load(opening=True)
 
+
+    cm.LOAD() # Load all of the app configs
+
     
 def DefineStyles():
     style = bs.Style(theme='darkly')
@@ -74,7 +77,11 @@ def DefineStyles():
     style.configure("Small.LongInfo.TLabel", font = (FONT, FONT_SIZE - 4, 'normal')) # A variant of LongInfo.TLabel with much smaller font
 
     style.configure("Compile.TLabel") # Labels showing compile log output
-    
+    compile_font = tk.StringVar(root, FONT)
+    compile_font_size = tk.IntVar(root, FONT_SIZE-2)
+
+    cm.SetGlobal("compile_font", (compile_font, compile_font_size))
+
     # Label frames #
     style.configure("Big.TLabelframe.Label")
 
@@ -118,5 +125,4 @@ def DefineStyles():
 
 
 main()
-
 root.mainloop()

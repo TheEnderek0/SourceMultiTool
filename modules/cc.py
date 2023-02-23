@@ -5,7 +5,6 @@ import pathlib as pl
 
 MODULE_PREFIX = 'CaptionCompile-'
 TOOL_NAME = 'captioncompiler'
-
 ConfigPath = (None, None)
 
 #----------------------------------------#
@@ -33,7 +32,7 @@ LOG_st = None
 LOG_PathName = ('', '')
 
 Additional_parameters = None
-
+ProgressBar = None
 
 def Init(container):
     print("Initialising Caption Compile tab")
@@ -43,8 +42,9 @@ def Init(container):
     global IOString
 
     global input_mode, output_mode
-
+    global ProgressBar
     global CompileOverrideError
+    global Additional_parameters
     # Initialise the main frame
     frame = ttk.Frame(container, style='Card.TFrame')
     frame.grid(column = 0, row = 0, sticky='nsew')
@@ -54,7 +54,7 @@ def Init(container):
     WindowFrame, ProgressBar = cm.ModuleWindow(frame)
     WindowFrame.columnconfigure(index=0, weight=1)
     WindowFrame.rowconfigure(index=0, weight=0) # IO
-    WindowFrame.rowconfigure(index=1, weight=5) # Options
+    WindowFrame.rowconfigure(index=1, weight=0) # Options
     WindowFrame.rowconfigure(index=2, weight=0) # Additional params
     WindowFrame.rowconfigure(index=3, weight=0) # Params
     WindowFrame.rowconfigure(index=4, weight=3) # Compile
@@ -70,9 +70,7 @@ def Init(container):
     output_mode = tk.BooleanVar(PathFrame, False)
 
     IOString = cm.IObars(PathFrame, input_mode, output_mode, 'resource', MODULE_PREFIX, InputCallback=[UpdateParameters]) # Create standard IO input output bars
-    
 
-    cm.GetGlobal('configuration').trace_add('write', lambda a, b, c: LoadFor(cm.GetGlobal('configuration')))
 
 
     OptionLabel = ttk.Label(WindowFrame, style = 'ShortInfo.TLabel', text='Options')
@@ -82,16 +80,7 @@ def Init(container):
     OptionGUI(MainOptionFrame)
 
 
-
-    POLabel = ttk.Label(WindowFrame, text='Additional parameters:', style='ShortInfo.TLabel')
-    ParamOverrideFrame = ttk.Labelframe(WindowFrame, style='TLabelframe', labelwidget=POLabel)
-    ParamOverrideFrame.grid(column=0, row=2, sticky='nsew',pady=20)
-    ParamOverrideFrame.columnconfigure(index=0, weight=1)
-    ParamOverrideFrame.rowconfigure(index=1, weight=1)
-    Entry = ttk.Entry(ParamOverrideFrame, style='Other.TEntry')
-    Entry.config(font=cm.AddFontTraces(Entry))
-    Entry.grid(column=0,row=1, sticky='nsew', padx=5, pady=5)
-
+    Additional_parameters = cm.AdditionalParameters(WindowFrame, 0, 2, TOOL_NAME)
 
 
     Paramname = ttk.Label(WindowFrame, text="Launch Parameters", style='ShortInfo.TLabel')
@@ -104,7 +93,8 @@ def Init(container):
     CompileFrame = ttk.Labelframe(WindowFrame, style='TLabelframe', labelwidget=CFLabel)
     CompileFrame.grid(column=0, row=4, sticky='nsew')
     global Compile
-    Compile = cm.CompileWindow(CompileFrame)
+    Compile = cm.CompileWindow(CompileFrame, TOOL_NAME)
+
 
     CompileOverrideError = tk.StringVar(container, '', "CAPTION-CompileOverride")
 
@@ -118,11 +108,16 @@ def Init(container):
     LOG_file.trace_add('write', lambda a, b, c: UpdateParameters())
     LOG_st.trace_add('write', lambda a, b, c: UpdateParameters())
 
-    OVerbose.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'verbose', OVerbose.get()))
-    ODLC_st.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'auto_dlc', ODLC_st.get()))
-    ODLC_val.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'manual_dlc', ODLC_val.get()))
-    LOG_st.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'log', LOG_st.get()))
-    LOG_file.trace_add('write', lambda a, b, c: cm.SaveData('app', 'captioncompile', 'log_path', LOG_file.get()))
+    OVerbose.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'verbose', OVerbose.get()))
+    ODLC_st.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'auto_dlc', ODLC_st.get()))
+    ODLC_val.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'manual_dlc', ODLC_val.get()))
+    LOG_st.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'log', LOG_st.get()))
+    LOG_file.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'log_path', LOG_file.get()))
+
+
+
+    # AFTER GUI HAS BEEN INITIALISED AND WE HAVE EVERY ELEMENT AVAILABLE:
+    cm.AppendLoading(Load) # Append the loading function for this module
     
 def OptionGUI(frame: ttk.Frame):
 
@@ -199,7 +194,7 @@ def OptionGUI(frame: ttk.Frame):
 
 
 def ParameterGUI(frame):
-    label = ttk.Label(frame, style='Small.LongInfo.TLabel', justify='left', text='', anchor='nw')
+    label = ttk.Label(frame, style='Small.LongInfo.TLabel', justify='left', text='', anchor='nw', wraplength=550)
     frame.bind('<Configure>', lambda e: cm.ResizeWrapLength(label, frame.winfo_width(), max=1200, endmultiplier=1))
     frame.columnconfigure(index=0, weight=1)
     frame.rowconfigure(index=0, weight=1)
@@ -209,15 +204,14 @@ def ParameterGUI(frame):
 
 def UpdateParameters():
     '''This is just to display the parameters in the param window'''
-    return # This will be done in the class itself
     global CompileOverrideError
     global LOG_PathName
 
     B = "   "
     par_label = ''
 
-    exe = str(ConfigPath[2])
-    gameFile = str(cm.GetGlobal('GameInfo')[1].get())
+    exe = ConfigPath[1].get()
+    gameFile = cm.GetGlobal("game_path")
     par_label += exe + B
 
     
@@ -225,7 +219,7 @@ def UpdateParameters():
 
     CompileOverrideError.set(CompileOverrideError.get() + '\n' + CompileOverrideErrorString)
 
-    par_label += '-game ' + game + B
+    par_label += '-game ' + str(game) + B
 
     if OVerbose.get():
         par_label += '-v' + B
@@ -239,25 +233,22 @@ def UpdateParameters():
 
     
     if LOG_st.get(): # We are wanting to log
-        if cm.CheckPathSyntax(LOG_file.get()):
+        
 
-            LOG_PathName = cm.SplitPath(LOG_file.get())
-            B_st = False
-            if LOG_PathName[0] != '' or LOG_PathName[1] != '': #Means the field is not empty
-                par_label += '-l'
-                B_st = True
+        LOG_PathName = cm.SplitPath(pl.Path(LOG_file.get()))
+        B_st = False
+        if LOG_PathName[0] != '' or LOG_PathName[1] != '': #Means the field is not empty
+            par_label += '-l'
+            B_st = True
+        if LOG_PathName[1] != '':
+            par_label += f' <Rename file to "{LOG_PathName[1]}"> '
+        if LOG_PathName[0] != '':
+            par_label += f' <Move file to "{LOG_PathName[0]}">'
+        if B_st:
+            par_label += B
 
-            if LOG_PathName[1] != '':
-                par_label += f' <Rename file to "{LOG_PathName[1]}"> '
-
-            if LOG_PathName[0] != '':
-                par_label += f' <Move file to "{LOG_PathName[0]}">'
-
-            if B_st:
-                par_label += B
-
-    input_st = cm.CheckInputValidity(IOString[0].get(), '.txt', input_mode.get())
-    par_label += input_st[2] + B
+    input_st = cm.CheckInputValidity(pl.Path(IOString[0].get()), '.txt', input_mode.get())
+    par_label += str(input_st[2]) + B
     
     outPath = IOString[1].get()
     par_label += f"<Transfer file(s) to {outPath}>" + B
@@ -266,26 +257,19 @@ def UpdateParameters():
     
         
 
-def LoadFor(stringVar: tk.StringVar):
-    
-    cm.SetGlobal('disable_save', True)
-    current_config = stringVar.get()
-
+def Load():
     global ODLC_st, OVerbose, ODLC_val, LOG_file, LOG_st
-
     #App specific loads
-    ODLC_st.set(cm.GetData('app', "captioncompile", "auto_dlc"))
-    OVerbose.set(cm.GetData('app', "captioncompile", "verbose"))
-    ODLC_val.set(cm.GetData('app', "captioncompile", "manual_dlc"))
-    LOG_st.set(cm.GetData('app', "captioncompile", "log"))
-    LOG_file.set(cm.GetData('app', "captioncompile", "log_path"))
 
-    cm.SetGlobal('disable_save', False)
 
-    global Loaded
-    if not Loaded:
-        SetupProgram()
-        Loaded = True
+    ODLC_st.set(cm.GetData('app', TOOL_NAME, "auto_dlc"))
+    OVerbose.set(cm.GetData('app', TOOL_NAME, "verbose"))
+    ODLC_val.set(cm.GetData('app', TOOL_NAME, "manual_dlc"))
+    LOG_st.set(cm.GetData('app', TOOL_NAME, "log"))
+    LOG_file.set(cm.GetData('app', TOOL_NAME, "log_path"))
+
+    SetupProgram()
+    Loaded = True
 
 
 
@@ -316,13 +300,12 @@ def ValidateSpinbox(valuew):
 def SetupProgram():
     global Compile
     rootWindow = Compile[0]
-    canvas = Compile[1]
-    compileB = Compile[2]
-    stopB = Compile[3]
-    nextB = Compile[4]
-    clearB = Compile[5]
+    compileB = Compile[1]
+    stopB = Compile[2]
+    nextB = Compile[3]
+    clearB = Compile[4]
 
-    TextWid = cm.CompileTextWidget(rootWindow, canvas, scroll=Compile[6])
+    TextWid = cm.CompileTextWidget(rootWindow, yscrollbar = Compile[7][0], xscrollbar = Compile[7][1], scroll=Compile[5], progressbar=ProgressBar)
     CompilerProgram = cm.Compiler(TOOL_NAME, TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='resource', source_extensions=['.txt'])
     TextWid.pack(fill='both', expand=True)
     compileB.bind("<Button>", lambda e: StartCompile(CompilerProgram))
@@ -361,17 +344,18 @@ def StartCompile(Compiler: cm.Compiler):
     if LOG_st.get():
         par.append('-l')
 
+    if OVerbose.get():
+        par.append('-v')
 
-    if input_success: #Must be last!
-        par.append(IOString[0].get())
-    else:
+    if not input_success:
         CompileOverrideError.set(CompileOverrideError.get() + i_error)
         errored = True
 
-    if Compile[7].get(): # If the automatic clear is online
+
+
+    if Compile[6].get(): # If the automatic clear is online
         Compiler.ClearField() # Clear the field before compile
 
 
-    Compiler.Compile(params=par, error=errored, folder=not input_mode.get())
-    #Compiler.Compile(['-game', f'C:/Program Files (x86)/Steam/steamapps/common/Portal 2/portal2/', "-d", "0", "-l", 'C:/Program Files (x86)/Steam/steamapps/common/Portal 2/portal2/resource/for-compile/amongus.txt'], error=errored)
+    Compiler.Compile(pl.Path(IOString[0].get()), pl.Path(IOString[1].get()), params=par, error=errored, folder=not input_mode.get())
 
