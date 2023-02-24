@@ -18,7 +18,7 @@ TITLE_FONT = 'Arial'
 FONT_SIZE = 12
 
 
-root = tk.Tk()
+root = bs.Window()
 root.minsize(1280, 720)
 cm.SetGlobal("root", root)
 
@@ -46,20 +46,22 @@ def main():
     cc.Init(selector)
 
     ### Load settings
-    filew = open(f"{os.getcwd()}/set.json", "r")
+    filew = open(cm.GetGlobal('defaultPath'), "r")
     cm.SetGlobal("default_settings", json.load(filew)) #TEMP
-
-    cm.LoadJson(f'{os.getcwd()}/settings.json')
 
     cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
 
     config_tab.Load(opening=True)
 
+
+    cm.LOAD() # Load all of the app configs
+
     
 def DefineStyles():
-    style = bs.Style(theme='darkly')
+    style = bs.Style(theme = 'darkly')
+    SetStyles(style)
 
-    # Everything #
+def SetStyles(style: bs.Style):
     style.configure(".")
 
     style.configure("TNotebook", )
@@ -74,7 +76,11 @@ def DefineStyles():
     style.configure("Small.LongInfo.TLabel", font = (FONT, FONT_SIZE - 4, 'normal')) # A variant of LongInfo.TLabel with much smaller font
 
     style.configure("Compile.TLabel") # Labels showing compile log output
-    
+    compile_font = tk.StringVar(root, FONT)
+    compile_font_size = tk.IntVar(root, FONT_SIZE-2)
+
+    cm.SetGlobal("compile_font", (compile_font, compile_font_size))
+
     # Label frames #
     style.configure("Big.TLabelframe.Label")
 
@@ -114,9 +120,6 @@ def DefineStyles():
     # Spinbox #
     style.configure('Option.TSpinbox') # Spinboxes in option panels
 
-    print("THEME NAMES " + str(style.theme_names()))
-
 
 main()
-
 root.mainloop()

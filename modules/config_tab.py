@@ -1,11 +1,34 @@
 import tkinter as tk
 from tkinter import ttk
 from . import common_lib as cm
-import os
+import pathlib as pl
 
-PATH_INFO_TEXT = "Path setup:"
+PATH_INFO_TEXT = "Path setup"
 
 saveDictionary = {}
+styles = {
+    "[L] Cosmo": "cosmo",
+    "[L] Flatly": "flatly",
+    "[L] Journal": "journal",
+    "[L] Litera": "litera",
+    "[L] Lumen": "lumen",
+    "[L] Minty": "minty",
+    "[L] Pulse": "pulse",
+    "[L] Sandstone": "sandstone",
+    "[L] United": "united",
+    "[L] Yeti": "yeti",
+    "[L] Morph": "morph",
+    "[L] Simplex": "simplex",
+    "[L] Cerculean": "cerculean",
+
+    "[D] Solar": "solar",
+    "[D] Superhero": "superhero",
+    "[D] Darkly": "darkly",
+    "[D] Cyborg": "cyborg",
+    "[D] Vapor": "vapor"
+
+}
+
 
 configs = []
 
@@ -23,6 +46,27 @@ def Init(container):
 
     SaveSelector(frame)
     PathSelect(frame)
+    OptionMenu(frame)
+
+def OptionMenu(cont):
+
+    label = ttk.Label(cont,    
+                        text="Options",
+                        wraplength=1200,    
+                        justify='center',   
+                        anchor='c',
+                        style='ShortInfo.TLabel'   
+                        )              
+
+    opFrame = ttk.Labelframe(cont, labelwidget=label, labelanchor='n')
+    opFrame.grid(column=1, row=1, sticky='nsew', padx=5)
+
+    opFrame.columnconfigure(index=0, weight=0)
+    opFrame.columnconfigure(index=1, weight=1)
+    opFrame.rowconfigure(index=0, weight=0)
+
+
+
 
 def SaveSelector(cont):
 
@@ -79,12 +123,11 @@ def PathSelect(container):
         anchor='c',
         style='ShortInfo.TLabel'                           
         )                                     
-    label.grid(column=0, row=0, sticky='nsew', pady=10)
 
 
     #   Create a frame for the scrolling canvas
-    scrollFrame = ttk.Frame(mainFrame)
-    scrollFrame.grid(column=0, row=2, sticky='nsew')
+    scrollFrame = ttk.Labelframe(mainFrame, labelwidget=label, labelanchor='n')
+    scrollFrame.grid(column=0, row=2, sticky='nsew', padx=5)
 
     scrollFrame.columnconfigure(index=0, weight=1)
     scrollFrame.columnconfigure(index=1, weight=0)
@@ -159,6 +202,8 @@ def PathSelect(container):
 
     gameinfoBox.grid(column=1, row=1, sticky='ew')
     gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File', ext='.txt'))
+
+    gameinfoString.trace_add('write', lambda a, b, c: cm.SetGlobal("game_path",    cm.SplitPath(pl.Path(gameinfoString.get()))[0]     )) # Save the path
 
     nameString.trace_add("write", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
     gameinfoString.trace_add("write", lambda a, b, c: cm.SaveForCFG("GameInfo", gameinfoString))
@@ -300,7 +345,6 @@ def DeleteConfig():
         index = len(configs)
     cm.GetGlobal("ConfigDropdown").set(configs[index])
     cm.SaveData("app", "config_tab", "active_cfg", cm.GetGlobal("ConfigDropdown").get())
-    
     
 
 
