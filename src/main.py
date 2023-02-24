@@ -18,7 +18,7 @@ TITLE_FONT = 'Arial'
 FONT_SIZE = 12
 
 
-root = bs.Window(iconphoto='img/icon.ico')
+root = bs.Window()
 root.minsize(1280, 720)
 cm.SetGlobal("root", root)
 
@@ -28,6 +28,7 @@ cm.SetGlobal("root", root)
 def main():
     DefineStyles()
     root.title("Source MultiTool")
+    root.iconbitmap("img/icon.ico")
     root.columnconfigure(index=0, weight=1)
     root.rowconfigure(index=0, weight=1)
 

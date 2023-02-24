@@ -6,28 +6,6 @@ import pathlib as pl
 PATH_INFO_TEXT = "Path setup"
 
 saveDictionary = {}
-styles = {
-    "[L] Cosmo": "cosmo",
-    "[L] Flatly": "flatly",
-    "[L] Journal": "journal",
-    "[L] Litera": "litera",
-    "[L] Lumen": "lumen",
-    "[L] Minty": "minty",
-    "[L] Pulse": "pulse",
-    "[L] Sandstone": "sandstone",
-    "[L] United": "united",
-    "[L] Yeti": "yeti",
-    "[L] Morph": "morph",
-    "[L] Simplex": "simplex",
-    "[L] Cerculean": "cerculean",
-
-    "[D] Solar": "solar",
-    "[D] Superhero": "superhero",
-    "[D] Darkly": "darkly",
-    "[D] Cyborg": "cyborg",
-    "[D] Vapor": "vapor"
-
-}
 
 
 configs = []
@@ -203,6 +181,7 @@ def PathSelect(container):
     gameinfoBox.grid(column=1, row=1, sticky='ew')
     gameinfoString.trace_add("write", lambda e, sussycode, w: cm.CheckPathValidity(gameinfoBox, 'File', ext='.txt'))
 
+    cm.SetGlobal("game_path", cm.SplitPath(pl.Path(gameinfoString.get())))
     gameinfoString.trace_add('write', lambda a, b, c: cm.SetGlobal("game_path",    cm.SplitPath(pl.Path(gameinfoString.get()))[0]     )) # Save the path
 
     nameString.trace_add("write", lambda a, b, c: SaveName(nameString)) #Trace to save when user modifies this
