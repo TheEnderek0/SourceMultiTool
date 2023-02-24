@@ -1,20 +1,20 @@
 {
     "cfg": {
         "Configuration": {
-            "GameInfo": "path",
-            "captioncompiler": "path",
+            "GameInfo": "",
+            "captioncompiler": "",
 
 
             "CaptionCompile-InputMode": "Folder",
-            "CaptionCompile-Input": "sus",
+            "CaptionCompile-Input": "",
             "CaptionCompile-OutputMode": "Folder",
-            "CaptionCompile-Output": "amog"
+            "CaptionCompile-Output": ""
         }
     },
     "app": {
         "config_tab": {
             "cfg_index": 0,
-            "active_cfg": "Config1"
+            "active_cfg": "Configuration"
         },
         "captioncompiler": {
             "verbose": false,
