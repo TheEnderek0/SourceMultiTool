@@ -107,6 +107,7 @@ def Init(container):
     ODLC_val.trace_add('write', lambda a, b, c: UpdateParameters())
     LOG_file.trace_add('write', lambda a, b, c: UpdateParameters())
     LOG_st.trace_add('write', lambda a, b, c: UpdateParameters())
+    Additional_parameters.trace_add('write', lambda a, b, c: UpdateParameters())
 
     OVerbose.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'verbose', OVerbose.get()))
     ODLC_st.trace_add('write', lambda a, b, c: cm.SaveData('app', TOOL_NAME, 'auto_dlc', ODLC_st.get()))
@@ -246,6 +247,8 @@ def UpdateParameters():
             par_label += f' <Move file to "{LOG_PathName[0]}">'
         if B_st:
             par_label += B
+    
+    par_label += Additional_parameters.get() + B
 
     input_st = cm.CheckInputValidity(pl.Path(IOString[0].get()), '.txt', input_mode.get())
     par_label += str(input_st[2]) + B
@@ -269,7 +272,6 @@ def Load():
     LOG_file.set(cm.GetData('app', TOOL_NAME, "log_path"))
 
     SetupProgram()
-    Loaded = True
 
 
 
@@ -306,7 +308,7 @@ def SetupProgram():
     clearB = Compile[4]
 
     TextWid = cm.CompileTextWidget(rootWindow, yscrollbar = Compile[7][0], xscrollbar = Compile[7][1], scroll=Compile[5], progressbar=ProgressBar)
-    CompilerProgram = cm.Compiler(TOOL_NAME, TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='resource', source_extensions=['.txt'])
+    CompilerProgram = cm.Compiler(TOOL_NAME, TextWid, CompileOverrideError, file_ext='.txt', game_relative_path='resource', source_extensions=['.txt'], callback=MoveLog)
     TextWid.pack(fill='both', expand=True)
     compileB.bind("<Button>", lambda e: StartCompile(CompilerProgram))
     stopB.bind("<Button>", lambda e: CompilerProgram.Stop())
@@ -351,11 +353,34 @@ def StartCompile(Compiler: cm.Compiler):
         CompileOverrideError.set(CompileOverrideError.get() + i_error)
         errored = True
 
-
+    par.append(Additional_parameters.get()) # Append the additional params
 
     if Compile[6].get(): # If the automatic clear is online
         Compiler.ClearField() # Clear the field before compile
 
 
+
     Compiler.Compile(pl.Path(IOString[0].get()), pl.Path(IOString[1].get()), params=par, error=errored, folder=not input_mode.get())
 
+def MoveLog(): # This will be run after the process, in a sepearate thread
+    log_path = pl.Path(LOG_file.get())  # We are only reading the value here, should be thread-safe
+    log_st = LOG_st.get()
+
+    
+    LOG_ORIGINAL = 'log.txt' # Original name of the log file
+
+    if log_st:
+        or_path = pl.Path("").joinpath(LOG_ORIGINAL)
+        try:
+            with open(or_path) as log:
+                c_log = log.read()
+                log.close()
+        except FileNotFoundError:
+            return
+        
+        
+        cm.SplitPath(log_path)[0].mkdir(parents=True, exist_ok=True)
+        with open(log_path, 'a') as save_dir:
+            save_dir.write(c_log + "\n")
+            or_path.unlink(missing_ok=True)
+            save_dir.close()

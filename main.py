@@ -18,7 +18,7 @@ TITLE_FONT = 'Arial'
 FONT_SIZE = 12
 
 
-root = tk.Tk()
+root = bs.Window()
 root.minsize(1280, 720)
 cm.SetGlobal("root", root)
 
@@ -46,10 +46,8 @@ def main():
     cc.Init(selector)
 
     ### Load settings
-    filew = open(f"{os.getcwd()}/set.json", "r")
+    filew = open(cm.GetGlobal('defaultPath'), "r")
     cm.SetGlobal("default_settings", json.load(filew)) #TEMP
-
-    cm.LoadJson(f'{os.getcwd()}/settings.json')
 
     cm.SetGlobal("disable_save", False) # Create this global, so we can use it later on
 
@@ -60,9 +58,10 @@ def main():
 
     
 def DefineStyles():
-    style = bs.Style(theme='darkly')
+    style = bs.Style(theme = 'darkly')
+    SetStyles(style)
 
-    # Everything #
+def SetStyles(style: bs.Style):
     style.configure(".")
 
     style.configure("TNotebook", )
@@ -120,8 +119,6 @@ def DefineStyles():
 
     # Spinbox #
     style.configure('Option.TSpinbox') # Spinboxes in option panels
-
-    print("THEME NAMES " + str(style.theme_names()))
 
 
 main()

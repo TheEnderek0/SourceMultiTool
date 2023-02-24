@@ -3,26 +3,28 @@ from tkinter import filedialog as fd
 import json
 import tkinter as tk
 from tkinter import ttk
-import os
+import os, stat
 import shutil
-import logging
-
+from sys import platform
 import pathlib as pl #I'm are going to replace the os module with this shortly
 
 from threading import Thread, Event
 from queue import Queue, Empty
 from subprocess import Popen, PIPE, STDOUT, TimeoutExpired
 
-from time import sleep
 
-jsonData = {}
-savePath = ''
+jsonData = None
+if 'win' in platform:
+    savePath = pl.Path(   "./settings.json"   )
+
+defaultPath = pl.Path('./bin/defaults.json')
 
 configuration = None # A tk.StringVar used to store the current config
 
 default_settings = {} # Dictionary storing default settings, these are appended by modules on startup
 
 load_functions = [] # List of functions, that are called when the app interface is done loading, and we need to load the "APP" block from the settings
+
 
 def Init(a):
     global configuration
@@ -461,8 +463,85 @@ def Select(type:list):
     else:
         return fd.askopenfilename(filetypes=type)
     
-def GetHighestDLC(game):
-    return 0
+def GetHighestDLC(game: pl.Path):
+
+    game_folder_name = game.stem # Get the game folder name
+    game_f_path = game.parent # Path to the game folder
+
+    game_folder_name = StripString(game_folder_name, "_dlc", Rl=True, include_phrase=True) # If the game folder is a dlc folder, strip the dlc out of the name
+    print("AMOGUS WILD" + game_folder_name)
+    dlc_list = game_f_path.glob(f"{game_folder_name}_dlc*")
+
+    dlc_list = list(dlc_list) # Convert generator into list
+    
+    max_dlc_lvl = 0
+
+    if len(dlc_list) == 0: # No dlcs found for this game
+        return -1
+    
+    for path in dlc_list: # TODO
+        
+        path_ = str(path)
+        path_ = StripString(path_, "_dlc", Rl=False, include_phrase=True) # Strip everything excluding the dlc number
+        print("STRIPPED PATH " + path_)
+        try:
+            let = path_[1] # It means this has a suffix, if this doesn't error
+            path_ = StripString(path_, let)
+
+        except IndexError:
+            pass
+        dlc_lvl = int(path_)
+        if dlc_lvl > max_dlc_lvl:
+            print("Changing dlc level to " + str(max_dlc_lvl))
+            max_dlc_lvl = dlc_lvl
+
+        #except ValueError:
+        #    return 0
+        
+    return max_dlc_lvl
+
+def StripString(string: str, strip_phrase: str, Rl:bool = True, include_phrase:bool=False):
+    '''
+        Strips string by searching for the strip_phrase in the string.\n
+        Rl - Right - true, left - False | Strip the left or right part of the string.\n
+        include_phrase - Strip the phrase (true) or leave it (false)?\n
+    '''
+
+
+    ind = 0
+    found_ind = 0 # Ending index of the search
+
+    for let_ind in range(len(string)):
+        let = string[let_ind]
+
+        if let == strip_phrase[ind]:
+
+            ind += 1
+            found_ind = let_ind
+
+            if ind == len(strip_phrase):
+                break
+    
+    if ind != len(strip_phrase): # We didn't find the phrase
+        return string
+
+
+    if not include_phrase and Rl: # Right, don't include
+        return string[:found_ind]
+    
+    elif include_phrase and not Rl: # Left, include
+        return string[found_ind+1:]
+
+    elif not include_phrase and not Rl: # Left, don't include
+        i_ = found_ind - len(strip_phrase)
+        return string[i_:]
+    
+    elif include_phrase and Rl: # Right, include
+        i_ = found_ind - len(strip_phrase)
+        return string[:i_-1]
+
+
+
 
 def CheckPathValidity(entrybox: tk.Entry, state='File', ext='', creatable=False):
     '''Checks if a path is valid, and sets the text colour of the entrybox to green/red accordingly'''
@@ -736,7 +815,7 @@ class CompileTextWidget(tk.Text):
 
 
 class Compiler():
-    def __init__(self, cmd:str, TextWidget: CompileTextWidget, ErrorOverride: tk.StringVar, file_ext = '', game_relative_path:str=None, source_extensions:list = []):
+    def __init__(self, cmd:str, TextWidget: CompileTextWidget, ErrorOverride: tk.StringVar, file_ext = '', game_relative_path:str=None, source_extensions:list = [], callback=None):
         '''
         Defines a program to compile files.
         cmd - name of the tool, the program will retrieve the path automatically
@@ -745,6 +824,7 @@ class Compiler():
         file_ext - input file extension
         game_relative_path - if set it means program only allows input relative to the gameinfo, this is the path that sets it, so for example "resource/"
         source_extensions - Extensions of the source files, needed for game_relative_path
+        callback - function that is called when the process finished compiling
         '''
         self.queue = TextWidget.queue
         self.program_path = cmd
@@ -755,6 +835,7 @@ class Compiler():
         self.Pr_transfer = game_relative_path # Transfer this to the program object
         self.Pr_game = GetGlobal("game_path")
         self.Pr_source_extensions = source_extensions
+        self.Callback = callback
 
     def ChangeProgramPath(self, path):
         '''Change the path for the program that is executed.'''
@@ -787,13 +868,13 @@ class Compiler():
             print(file_list)
             self.filecount = len(file_list) # Set the file count for the progressbar
             self.program = Program(GetPathForTool(self.program_path), self.queue, inputpath, outputpath, self.Pr_game, self.widget.stop, params, folder_mode=True, 
-                                   files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount)
+                                   files=file_list, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount, callback=self.Callback)
             
         else:
             file = [    inputpath  ]
             self.widget.filecount = 1
             self.program = Program(GetPathForTool(self.program_path), self.queue, inputpath, outputpath, self.Pr_game, self.widget.stop, params, 
-                                   files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount)
+                                   files=file, gm_rel_path=self.Pr_transfer, source_extensions=self.Pr_source_extensions, file_counter = self.widget.progresscount, callback=self.Callback)
 
         self.program.start() # Start the thread
     
@@ -803,7 +884,7 @@ class Compiler():
             self.program.stop()
 
 class Program(Thread):
-    def __init__(self, cmd, queue, inputpath: pl.Path, outputpath: pl.Path, game: pl.Path, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:pl.Path=None, source_extensions=[], file_counter:tk.IntVar=None):
+    def __init__(self, cmd, queue, inputpath: pl.Path, outputpath: pl.Path, game: pl.Path, terminate_event: Event, param: list=[], folder_mode = False, files=None, gm_rel_path:pl.Path=None, source_extensions=[], file_counter:tk.IntVar=None, callback=None):
         super().__init__(group=None, name=None, daemon=True)
 
         self.terminate = terminate_event
@@ -828,7 +909,7 @@ class Program(Thread):
 
         self.forceTerminate = Event() # Forces the program to quit with no removing files from the queue
         self.Counter = file_counter
-
+        self.Callback = callback
 
         if self.rel_path: # It means we are dealing with a program that does not like absolute filepaths (not relative to the GAME directory)
             if self.game.is_dir():
@@ -891,10 +972,14 @@ class Program(Thread):
 
         #else:
         self.need_to_move_file.set() # We ended this compile, we need to move it now
+        if self.Callback:
+                self.Callback()
+
         if self.CompileNextFile(): # Ended this file, compile next one. If we are starting it will automatically default to this one
             print("Running!")
             self.run() # TO CHECK
         else: # No files left, terminate the line appending and stop compiling
+
             self.InternalDisable()
 
         print("Shutting down!")
@@ -1010,19 +1095,22 @@ def FindFilesByExtension(directory:pl.Path, filter:list=[], mode:bool=False, fil
 
 # Save managment
 
-def LoadJson(path: str):
+def LoadJson():
     global jsonData
-    global savePath
 
-    savePath = path
+    
     try:
-        file = open(path, "r")
+        file = open(savePath, "r")
         jsonData = json.load(file)
+        file.close()
         if not jsonData:
             return False
         return True
     except:
-        open(path, "w")
+        SplitPath(savePath)[0].mkdir(parents=True, exist_ok=True)
+        file = open(savePath, "w")
+        jsonData = {}
+        file.close()
         return False
     
 def SaveData(type, entry, slot, value):
@@ -1053,12 +1141,17 @@ def SaveData(type, entry, slot, value):
             #print("Temp 2 is " + str(temp2))
             #print("Json Data is " + str(jsonData))
 
-    json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+    file = open(savePath, "w")
+    json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+    file.close()
     ReloadJson()
 
 def GetData(type: str, name: str = 'none', config: str = 'none'):
     global jsonData
     to_return = {}
+
+    if not jsonData:
+        LoadJson()
 
     if type != 'cfg' and type != 'app':
         raise ValueError(f"Type {type} is invalid!")
@@ -1077,7 +1170,9 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
         except KeyError: # This part doesn't exist, return and save the default one
             
             jsonData[type] = default_settings[type]
-            json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+            file = open(savePath, "w")
+            json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+            file.close()
             ReloadJson()
 
         to_return = jsonData[type]
@@ -1092,12 +1187,16 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
                     raise ValueError(f"Invalid name of {name} was passed!")
                 
                 jsonData[type][name] = default_settings[type][def_name]
-                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                file = open(savePath, "w")
+                json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+                file.close()
                 ReloadJson()
 
             except KeyError: # If even upper code failed, this means we are missing the whole block
                 jsonData[type] = default_settings[type]
-                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                file = open(savePath, "w")
+                json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+                file.close()
                 ReloadJson()
                 
         to_return = jsonData[type][name]
@@ -1114,7 +1213,9 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
                 jsonData[type][name] #Check if we have this name in general
                 #print("Going further")
                 jsonData[type][name][config] = default_settings[type][def_name][config] # We do, so save for this name, attribute of the default name
-                json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                file = open(savePath, "w")
+                json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+                file.close()
                 ReloadJson()
 
             except KeyError:
@@ -1127,12 +1228,16 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
                         raise ValueError(f"Invalid name of {name} was passed!") # We only look at the app!
 
                     jsonData[type][name] = default_settings[type][def_name]
-                    json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                    file = open(savePath, "w")
+                    json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+                    file.close()
                     ReloadJson()
 
                 except KeyError: #We don't even have the block
                     jsonData[type] = default_settings[type]
-                    json.dump(jsonData, open(savePath, "w"), indent=4, sort_keys=True, check_circular=False)
+                    file = open(savePath, "w")
+                    json.dump(jsonData, file, indent=4, sort_keys=True, check_circular=False)
+                    file.close()
                     ReloadJson()
 
         to_return = jsonData[type][name][config]
@@ -1142,7 +1247,7 @@ def GetData(type: str, name: str = 'none', config: str = 'none'):
 def ReloadJson():
     global jsonData
     jsonData = {} #Flush the variable
-    LoadJson(savePath)
+    LoadJson()
 
 def SetGlobal(name: str, value):
     '''Set a global, or change its value'''
