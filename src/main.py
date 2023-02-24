@@ -18,7 +18,7 @@ TITLE_FONT = 'Arial'
 FONT_SIZE = 12
 
 
-root = bs.Window()
+root = bs.Window(iconphoto='img/icon.ico')
 root.minsize(1280, 720)
 cm.SetGlobal("root", root)
 
