@@ -1,1 +1,2 @@
-pyinstaller --onedir --clean compile.spec
+pyinstaller --clean main.spec
+pause
