@@ -1,0 +1,30 @@
+{
+    "cfg": {
+        "Configuration": {
+            "GameInfo": "path",
+            "captioncompiler": "path",
+
+
+            "CaptionCompile-InputMode": "Folder",
+            "CaptionCompile-Input": "sus",
+            "CaptionCompile-OutputMode": "Folder",
+            "CaptionCompile-Output": "amog"
+        }
+    },
+    "app": {
+        "config_tab": {
+            "cfg_index": 0,
+            "active_cfg": "Config1"
+        },
+        "captioncompiler": {
+            "verbose": false,
+            "auto_dlc": true,
+            "manual_dlc": 0,
+            "log": false,
+            "log_path": "",
+            "auto_scroll": true,
+            "auto_clear": false,
+            "additional_params": ""
+        }
+    }
+}
