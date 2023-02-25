@@ -1,9 +1,12 @@
 # SourceMultiTool
+
 A multi purpose, lightweight tool to speed up compiling processes for various Source Engine programs.
 As of now, it consists of modules:
 - Info
 - Configurations
-- Caption Compiling
+- Caption Compiling!
+[smt](https://user-images.githubusercontent.com/67070613/221353745-46141a70-c893-4d37-a837-015b2bb83224.png "Icon")
+
 
 ### Warning! This tool is not directly supported on Linux, while maybe it will run on Linux-based systems, no support is guaranteed as of now!
 
